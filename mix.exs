@@ -1,0 +1,35 @@
+defmodule StateServer.MixProject do
+  use Mix.Project
+
+  def project do
+    [
+      app: :state_server,
+      version: "0.1.0",
+      elixir: "~> 1.9",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        docs: :docs]
+    ]
+  end
+
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
+  defp deps do
+    [
+      {:credo, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.21.1", only: :docs, runtime: false},
+      {:excoveralls, "~> 0.11", only: [:dev, :test]},
+      {:dialyxir, "~> 0.5", only: :dev, runtime: false}
+    ]
+  end
+end

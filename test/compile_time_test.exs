@@ -11,7 +11,10 @@ defmodule StateServerTest.CompileTimeTest do
 
   defmodule GraphFunction do
     use StateServer
+    Module.register_attribute(__MODULE__, :state_graph, persist: true)
     @state_graph [foo: [bar: :foo]]
+
+    xxx()
   end
 
   test "__state_graph__/0 is correctly assigned at compile time" do

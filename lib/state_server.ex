@@ -186,6 +186,7 @@ defmodule StateServer do
       @before_compile StateServer
 
       import StateServer, only: [reply: 2]
+      import StateServer.TestMacro
 
       @behaviour StateServer
     end

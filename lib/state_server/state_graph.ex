@@ -148,7 +148,7 @@ defmodule StateServer.StateGraph do
 
   @doc """
   outputs a list of terminal {state, transition} tuples of the graph.  Used to generate the
-  `c:StateServer.is_terminal/2` guard.
+  `c:StateServer.is_terminal_transition/2` guard.
 
   ```elixir
   iex> StateServer.StateGraph.terminal_transitions(start: [t1: :state1, t2: :state2], state1: [], state2: [])
@@ -167,4 +167,13 @@ defmodule StateServer.StateGraph do
       if dest in t_states, do: [{state, tr}], else: []
     end)
   end
+
+  @doc """
+  converts a list of atoms to a type which is the union of the atom literals
+  """
+  @spec atoms_to_typelist([atom]) :: Macro.t
+  def atoms_to_typelist([]), do: nil
+  def atoms_to_typelist([state]), do: state
+  def atoms_to_typelist([state1, state2]), do: {:|, [], [state1, state2]}
+  def atoms_to_typelist([state | rest]), do: {:|, [], [state, atoms_to_typelist(rest)]}
 end

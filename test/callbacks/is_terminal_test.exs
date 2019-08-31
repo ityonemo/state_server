@@ -3,9 +3,7 @@ defmodule StateServerTest.Callbacks.IsTerminalTest do
   use ExUnit.Case, async: true
 
   defmodule Module do
-    use StateServer
-
-    @state_graph [start: [tr1: :end, tr2: :start], end: []]
+    use StateServer, state_graph: [start: [tr1: :end, tr2: :start], end: []]
 
     def test_terminal(state) when is_terminal(state), do: :terminal
     def test_terminal(_state), do: :not_terminal

@@ -13,7 +13,7 @@ defmodule StateServer.StateGraph do
   @doc """
   checks the validity of the state graph.
 
-  Should only be called at module compilation time.
+  Should only be called when we build the state graph.
 
   A state graph is valid if and only if all of the following are true:
 
@@ -28,7 +28,7 @@ defmodule StateServer.StateGraph do
   def valid?(stategraph) when is_list(stategraph) do
     # check to make sure everything is a keyword of keywords.
     Enum.each(stategraph, fn
-      {state, transitions} when is_atom(state)->
+      {state, transitions} when is_atom(state) ->
         Enum.each(transitions, fn
           {transition, destination} when
           is_atom(transition) and is_atom(destination) ->
@@ -158,14 +158,13 @@ defmodule StateServer.StateGraph do
   @spec terminal_transitions(t) :: keyword(atom)
   def terminal_transitions(stategraph) do
     t_states = terminal_states(stategraph)
-    Enum.flat_map(stategraph, fn {state, lst} ->
-      Enum.flat_map(lst, fn {tr, dest} ->
-        if dest in t_states do
-          [{state, tr}]
-        else
-          []
-        end
-      end)
+    Enum.flat_map(stategraph, &transitions_for_state(&1, t_states))
+  end
+
+  @spec transitions_for_state({atom, keyword(atom)}, [atom]) :: keyword(atom)
+  defp transitions_for_state({state, trs}, t_states) do
+    Enum.flat_map(trs, fn {tr, dest} ->
+      if dest in t_states, do: [{state, tr}], else: []
     end)
   end
 end

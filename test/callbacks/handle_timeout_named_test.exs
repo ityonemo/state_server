@@ -3,9 +3,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
   use ExUnit.Case, async: true
 
   defmodule Instrumented do
-    use StateServer
-
-    @state_graph [start: [tr: :end], end: []]
+    use StateServer, state_graph: [start: [tr: :end], end: []]
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
@@ -49,7 +47,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
     test "works with transition/idempotent" do
       test_pid = self()
 
-      {:ok, srv} = Instrumented.start_link(fn value->
+      {:ok, srv} = Instrumented.start_link(fn value ->
         send(test_pid, {:foo, value})
         {:noreply, transition: :tr}
       end)
@@ -100,7 +98,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
     test "works with transition/idempotent" do
       test_pid = self()
 
-      {:ok, srv} = Instrumented.start_link(fn value->
+      {:ok, srv} = Instrumented.start_link(fn value ->
         send(test_pid, {:foo, value})
         {:noreply, transition: :tr}
       end)

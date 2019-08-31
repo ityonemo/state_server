@@ -1,8 +1,6 @@
 defmodule Switch do
-  use StateServer
-
-  @state_graph [off: [flip: :on],
-                on:  [flip: :off]]
+  use StateServer, state_graph: [off: [flip: :on],
+                                 on:  [flip: :off]]
 
   @type data :: non_neg_integer
 

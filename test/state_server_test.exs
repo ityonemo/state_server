@@ -1,4 +1,4 @@
-defmodule StateServerTest.StateServerTest do
+defmodule StateServerTest do
   #
   # tests relating to starting a StateServer startup
   #

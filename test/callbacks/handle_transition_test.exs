@@ -10,14 +10,17 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
+    @impl true
     def init(fun), do: {:ok, fun}
 
     def state(srv), do: StateServer.call(srv, :state)
 
+    @impl true
     def handle_transition(start_state, transition, fun) do
       fun.(start_state, transition)
     end
 
+    @impl true
     def handle_call(:state, _from, state, data), do: {:reply, {state, data}}
     def handle_call({:transition, tr}, _from, _state, _fun) do
       {:reply, "foo", transition: tr}
@@ -29,6 +32,7 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
       {:reply, "foo", goto: :end, update: "bar"}
     end
 
+    @impl true
     def handle_cast({:transition, tr}, _state, _fun) do
       {:noreply, transition: tr}
     end
@@ -39,6 +43,7 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
       {:noreply, internal: {:delay, who}, transition: :tr}
     end
 
+    @impl true
     def handle_internal({:delay, who}, _state, _data) do
       send(who, :deferral)
       receive do :deferred -> :noreply end

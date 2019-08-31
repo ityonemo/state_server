@@ -9,6 +9,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
+    @impl true
     def init(fun), do: {:ok, fun}
 
     def state(srv), do: StateServer.call(srv, :state)
@@ -17,6 +18,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
       StateServer.call(srv, {:state_timeout, payload, time})
     end
 
+    @impl true
     def handle_call(:state, _from, state, data), do: {:reply, {state, data}}
     def handle_call({:state_timeout, time}, _from, _state, _data) do
       {:reply, "foo", state_timeout: time}
@@ -28,6 +30,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
       {:reply, :ok, transition: tr}
     end
 
+    @impl true
     def handle_timeout(value, _state, fun), do: fun.(value)
   end
 

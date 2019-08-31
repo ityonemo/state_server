@@ -9,10 +9,12 @@ defmodule StateServerTest.Callbacks.GotoTest do
 
     def start_link, do: StateServer.start_link(__MODULE__, :ok)
 
+    @impl true
     def init(any), do: {:ok, any}
 
     def state(srv), do: StateServer.call(srv, :state)
 
+    @impl true
     def handle_call(:state, _from, state, data), do: {:reply, {state, data}}
     def handle_call({:goto, new_state}, _from, _state, _data) do
       {:reply, "foo", goto: new_state}

@@ -9,15 +9,18 @@ defmodule StateServerTest.Callbacks.HandleInternalTest do
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
+    @impl true
     def init(fun), do: {:ok, fun}
 
     def state(srv), do: StateServer.call(srv, :state)
 
+    @impl true
     def handle_call(:state, _from, state, data), do: {:reply, {state, data}}
     def handle_call(:go, _from, _state, _data) do
       {:reply, "foo", [internal: :foo]}
     end
 
+    @impl true
     def handle_internal(:foo, _state, fun), do: fun.()
   end
 

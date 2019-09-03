@@ -147,6 +147,27 @@ defmodule StateServer.StateGraph do
   end
 
   @doc """
+  outputs a list of edges of the graph.  Used to generate the `c:StateServer.is_edge/1` guard.
+
+  ```elixir
+  iex> StateServer.StateGraph.edges(start: [t1: :state1, t2: :state2], state1: [t3: :start], state2: [])
+  [start: {:t1, :state1}, start: {:t2, :state2}, state1: {:t3, :start}]
+  ```
+  """
+  @spec edges(t) :: keyword({atom, atom})
+  def edges(state_graph) do
+    Enum.flat_map(state_graph, fn
+      {_, []} -> []
+      {state, transitions} ->
+        Enum.flat_map(transitions, fn
+          {transition, dest} ->
+            [{state, {transition, dest}}]
+        end)
+      _ -> []
+    end)
+  end
+
+  @doc """
   outputs a list of terminal {state, transition} tuples of the graph.  Used to generate the
   `c:StateServer.is_terminal_transition/2` guard.
 

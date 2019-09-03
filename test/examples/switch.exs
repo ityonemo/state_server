@@ -22,7 +22,7 @@ defmodule Switch do
   @spec state(GenServer.server) :: state
   def state(srv), do: GenServer.call(srv, :state)
 
-  @spec state_impl(state) :: reply
+  @spec state_impl(state) :: StateServer.reply_response
   defp state_impl(state) do
     {:reply, state}
   end
@@ -34,7 +34,7 @@ defmodule Switch do
   @spec count(GenServer.server) :: non_neg_integer
   def count(srv), do: GenServer.call(srv, :count)
 
-  @spec count_impl(non_neg_integer) :: reply
+  @spec count_impl(non_neg_integer) :: StateServer.reply_response
   defp count_impl(count) do
     {:reply, count}
   end
@@ -45,7 +45,7 @@ defmodule Switch do
   @spec flip(GenServer.server) :: state
   def flip(srv), do: GenServer.call(srv, :flip)
 
-  @spec flip_impl(state, non_neg_integer) :: reply
+  @spec flip_impl(state, non_neg_integer) :: StateServer.reply_response
   defp flip_impl(:on, count) do
     {:reply, :off, transition: :flip, update: count + 1}
   end
@@ -60,11 +60,11 @@ defmodule Switch do
   @spec set(GenServer.server, state) :: :ok
   def set(srv, new_state), do: GenServer.call(srv, {:set, new_state})
 
-  @spec set_impl(state, state) :: reply
-  defp set_impl(state, state) do
+  @spec set_impl(state, state, data) :: StateServer.reply_response
+  defp set_impl(state, state, _) do
     {:reply, state}
   end
-  defp set_impl(state, new_state) do
+  defp set_impl(state, new_state, count) do
     {:reply, state, goto: new_state, update: count + 1}
   end
 
@@ -72,16 +72,30 @@ defmodule Switch do
   ## callback routing
 
   @impl true
-  def handle_call(:state, _from, state, _data) do
+  def handle_call(:state, _from, state, _count) do
     state_impl(state)
   end
-  def handle_call(:count, _from, _state, data) do
-    count_impl(data)
+  def handle_call(:count, _from, _state, count) do
+    count_impl(count)
   end
-  def handle_call(:flip, _from, state, data) do
-    flip_impl(state, data)
+  def handle_call(:flip, _from, state, count) do
+    flip_impl(state, count)
   end
-  def handle_call({:set, new_state}, _from, state, data) do
-    set_impl(state, new_state)
+  def handle_call({:set, new_state}, _from, state, count) do
+    set_impl(state, new_state, count)
+  end
+
+  # if we are flipping on the switch, then turn it off after 300 ms
+  # to conserve energy.
+  @impl true
+  def handle_transition(state, transition, _count)
+    when is_edge(state, transition, :on) do
+    {:noreply, state_timeout: {:conserve, 300}}
+  end
+  def handle_transition(_, _, _), do: :noreply
+
+  @impl true
+  def handle_timeout({:conserve, 300}, :on, _count) do
+    {:noreply, transition: :flip}
   end
 end

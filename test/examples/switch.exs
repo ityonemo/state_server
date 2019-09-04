@@ -95,7 +95,7 @@ defmodule Switch do
   def handle_transition(_, _, _), do: :noreply
 
   @impl true
-  def handle_timeout({:conserve, 300}, :on, _count) do
+  def handle_timeout(:conserve, :on, _count) do
     {:noreply, transition: :flip}
   end
 end

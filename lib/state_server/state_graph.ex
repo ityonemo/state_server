@@ -147,7 +147,7 @@ defmodule StateServer.StateGraph do
   end
 
   @doc """
-  outputs a list of edges of the graph.  Used to generate the `c:StateServer.is_edge/1` guard.
+  outputs a list of edges of the graph.  Used to generate the `c:StateServer.is_edge/3` guard.
 
   ```elixir
   iex> StateServer.StateGraph.edges(start: [t1: :state1, t2: :state2], state1: [t3: :start], state2: [])

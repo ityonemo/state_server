@@ -2,6 +2,8 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
 
   use ExUnit.Case, async: true
 
+  @moduletag :mod
+
   defmodule Instrumented do
     use StateServer, state_graph: [start: [tr: :end], end: []]
 
@@ -22,7 +24,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
       {:reply, "foo", [timeout: {:bar, time}]}
     end
     def handle_call({:named_timeout, payload, time}, _from, _state, _data) do
-      {:reply, "foo", [timeout: {:bar, payload, time}]}
+      {:reply, "foo", [timeout: {{:bar, payload}, time}]}
     end
 
     @impl true
@@ -30,6 +32,8 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
   end
 
   describe "instrumenting handle_timeout and triggering with named_timeout" do
+
+    @tag :one
     test "works with static/update" do
       test_pid = self()
 

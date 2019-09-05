@@ -210,11 +210,11 @@ defmodule StateServer do
   reformatted to be more user-friendly.
   """
   @type event ::
-    {:internal, term} | {:continue, term} |
+    {:transition, atom} | {:goto, atom} | {:update, term} | {:internal, term} | {:continue, term} |
     {:event_timeout, {term, non_neg_integer}} | {:event_timeout, non_neg_integer} |
     {:state_timeout, {term, non_neg_integer}} | {:state_timeout, non_neg_integer} |
-    {:timeout, non_neg_integer} | {:timeout, {term, non_neg_integer}} |
-    {:transition, atom} | {:update, term} | {:goto, atom} | :noop | :gen_statem.event_type
+    {:timeout, {term, non_neg_integer}} | {:timeout, non_neg_integer} |
+    :noop | :gen_statem.event_type
 
   @typedoc false
   @type from :: {pid, tag :: term}
@@ -228,8 +228,13 @@ defmodule StateServer do
   @typedoc "handler output when the state machine should stop altogether"
   @type stop_response ::
     :stop | {:stop, reason :: term} | {:stop, reason :: term, new_data :: term} |
-    {:stop_and_reply, reason :: term, replies :: [:gen_statem.reply_action] | :gen_statem.reply_action} |
-    {:stop_and_reply, reason :: term, replies :: [:gen_statem.reply_action] | :gen_statem.reply_action, new_data :: term}
+    {:stop_and_reply,
+      reason :: term,
+      replies :: [:gen_statem.reply_action] | :gen_statem.reply_action} |
+    {:stop_and_reply,
+      reason :: term,
+      replies :: [:gen_statem.reply_action] | :gen_statem.reply_action,
+      new_data :: term}
 
   @doc """
   starts the state machine, similar to `c:GenServer.init/1`
@@ -245,7 +250,14 @@ defmodule StateServer do
   - `:ignore`
   - `{:stop, reason}`
   """
-  @callback init(any) :: :gen_statem.init_result(atom)
+  @callback init(any) ::
+    {:ok, initial_data::term} |
+    {:ok, initial_data::term, internal: term} |
+    {:ok, initial_data::term, continue: term} |
+    {:ok, initial_data::term, goto: atom} |
+    {:ok, initial_data::term, goto: atom, internal: term} |
+    {:ok, initial_data::term, goto: atom, continue: term} |
+    :ignore | {:stop, reason :: any}
 
   @doc """
   handles messages sent to the StateMachine using `StateServer.call/3`

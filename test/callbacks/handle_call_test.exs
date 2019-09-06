@@ -1,3 +1,5 @@
+# TODO: make sure that the call scheme is well tested
+
 defmodule StateServerTest.Callbacks.HandleCallTest do
 
   use ExUnit.Case, async: true

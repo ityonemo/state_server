@@ -1,3 +1,6 @@
+# TODO: test that all erlang-style timeouts are correctly tested
+# TODO: test that all payload-less timeouts have nil as the payload
+
 defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
 
   use ExUnit.Case, async: true

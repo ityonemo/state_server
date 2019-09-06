@@ -1,17 +1,19 @@
 defmodule Switch do
+
+  @doc """
+  implements a light switch as a state server.  In data, it keeps a count of
+  how many times the state of the light switch has changed.
+  """
+
   use StateServer, state_graph: [off: [flip: :on],
                                  on:  [flip: :off]]
 
   @type data :: non_neg_integer
 
-  def start_link(_) do
-    StateServer.start_link(__MODULE__, :ok)
-  end
+  def start_link, do: StateServer.start_link(__MODULE__, :ok)
 
   @impl true
-  def init(:ok) do
-    {:ok, 0}
-  end
+  def init(:ok), do: {:ok, 0}
 
   ##############################################################
   ## API ENDPOINTS
@@ -35,9 +37,7 @@ defmodule Switch do
   def count(srv), do: GenServer.call(srv, :count)
 
   @spec count_impl(non_neg_integer) :: StateServer.reply_response
-  defp count_impl(count) do
-    {:reply, count}
-  end
+  defp count_impl(count), do: {:reply, count}
 
   @doc """
   triggers the flip transition.
@@ -55,7 +55,7 @@ defmodule Switch do
 
   @doc """
   sets the state of the switch, without explicitly triggering the flip
-  transition.
+  transition.  Note the use of the builtin `t:state/0` type.
   """
   @spec set(GenServer.server, state) :: :ok
   def set(srv, new_state), do: GenServer.call(srv, {:set, new_state})

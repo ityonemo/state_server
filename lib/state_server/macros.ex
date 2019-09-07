@@ -22,7 +22,7 @@ defmodule StateServer.Macros do
         0 ->
           raise "attempted to call StateServer #{inspect(proc)} but no #{unquote(fun)} clause was provided"
         1 ->
-          :stop
+          {:stop, {:EXIT, "call error"}}
       end
     end
 

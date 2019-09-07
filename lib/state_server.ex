@@ -2,7 +2,6 @@ defmodule StateServer do
 
   @switch_doc File.read!("test/examples/switch.exs")
 
-  # TODO: implement tests for default callbacks.
   # TODO: normalize private calls with do_ prefix
 
   @moduledoc """

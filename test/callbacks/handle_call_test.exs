@@ -97,4 +97,22 @@ defmodule StateServerTest.Callbacks.HandleCallTest do
       assert {:end, "bar"} = Instrumented.state(srv)
     end
   end
+
+  defmodule UnInstrumented do
+    use StateServer, state_graph: [start: [tr: :end], end: []]
+    def start_link(_), do: StateServer.start_link(__MODULE__, :ok)
+
+    @impl true
+    def init(_), do: {:ok, :ok}
+  end
+
+  describe "tests against uninstrumented code" do
+    test "should throw a runtime error" do
+      Process.flag(:trap_exit, true)
+      {:ok, srv} = UnInstrumented.start_link(:ok)
+      emsg = catch_exit(StateServer.call(srv, :foo))
+      assert {{%RuntimeError{message: msg}, _}, _} = emsg
+      assert msg =~ "handle_call/4"
+    end
+  end
 end

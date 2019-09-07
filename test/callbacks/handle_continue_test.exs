@@ -56,4 +56,28 @@ defmodule StateServerTest.Callbacks.HandleContinueTest do
       assert_receive :continued
     end
   end
+
+  defmodule UnInstrumented do
+    use StateServer, state_graph: [start: [tr: :end], end: []]
+    def start_link(_), do: StateServer.start_link(__MODULE__, :ok)
+
+    @impl true
+    def init(_), do: {:ok, :ok}
+
+    @impl true
+    def handle_call(:go, _, _, _) do
+      {:reply, :ok, continue: "foo"}
+    end
+  end
+
+  describe "tests against uninstrumented code" do
+    test "should throw a runtime error" do
+      Process.flag(:trap_exit, true)
+      {:ok, srv} = UnInstrumented.start_link(:ok)
+      StateServer.call(srv, :go)
+      assert_receive {:EXIT, ^srv, {%RuntimeError{message: msg}, _}}
+      assert msg =~ "handle_continue/3"
+    end
+  end
+
 end

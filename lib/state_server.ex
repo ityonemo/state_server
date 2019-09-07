@@ -2,7 +2,7 @@ defmodule StateServer do
 
   @switch_doc File.read!("test/examples/switch.exs")
 
-  # TODO: implement default callbacks.
+  # TODO: implement tests for default callbacks.
   # TODO: normalize private calls with do_ prefix
 
   @moduledoc """
@@ -410,6 +410,17 @@ defmodule StateServer do
       def __transition__(state, transition) do
         StateGraph.transition(@state_graph, state, transition)
       end
+
+      # provide a default child_spec argument
+      def child_spec(init_arg) do
+        default = %{
+          id: __MODULE__,
+          start: {__MODULE__, :start_link, [init_arg]}
+        }
+        Supervisor.child_spec(default, unquote(Macro.escape(opts)))
+      end
+
+      defoverridable child_spec: 1
     end
   end
 
@@ -693,6 +704,7 @@ defmodule StateServer do
   StateServer.Macros.default_handler handle_call: 4
   StateServer.Macros.default_handler handle_cast: 3
   StateServer.Macros.default_handler handle_continue: 3
+  StateServer.Macros.default_handler handle_internal: 3
   StateServer.Macros.default_handler handle_timeout: 3
 
   @spec handle_info(term, atom, term) :: :noreply
@@ -725,4 +737,3 @@ defmodule StateServer do
   defp format_status_default(_, data), do: [{:data, [{"State", data.data}]}]
 
 end
-

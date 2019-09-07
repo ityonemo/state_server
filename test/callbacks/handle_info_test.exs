@@ -49,4 +49,24 @@ defmodule StateServerTest.Callbacks.HandleInfoTest do
       assert {:end, "bar"} = Instrumented.state(srv)
     end
   end
+
+  defmodule UnInstrumented do
+    use StateServer, state_graph: [start: [tr: :end], end: []]
+    def start_link(_), do: StateServer.start_link(__MODULE__, :ok)
+
+    @impl true
+    def init(_), do: {:ok, :ok}
+  end
+
+  describe "tests against uninstrumented code" do
+    import ExUnit.CaptureLog
+
+    test "should send an error to the log" do
+      {:ok, srv} = UnInstrumented.start_link(:ok)
+      assert capture_log(fn ->
+        send(srv, "msg")
+        Process.sleep(100)
+      end) =~ "StateServer #{inspect srv} received unexpected message in handle_info/3"
+    end
+  end
 end

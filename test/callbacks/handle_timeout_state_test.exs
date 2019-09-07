@@ -33,6 +33,20 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
   end
 
   describe "instrumenting handle_timeout and triggering with state_timeout" do
+    test "works with static/idempotent" do
+      test_pid = self()
+
+      {:ok, srv} = Instrumented.start_link(fn value ->
+        send(test_pid, {:foo, value})
+        :noreply
+      end)
+
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = Instrumented.state_timeout(srv)
+      assert_receive {:foo, 0}
+      assert {:start, ^f} = Instrumented.state(srv)
+    end
+
     test "works with static/update" do
       test_pid = self()
 
@@ -59,6 +73,20 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
       assert "foo" = Instrumented.state_timeout(srv)
       assert_receive {:foo, 0}
       assert {:end, ^f} = Instrumented.state(srv)
+    end
+
+    test "works with transition/update" do
+      test_pid = self()
+
+      {:ok, srv} = Instrumented.start_link(fn value ->
+        send(test_pid, {:foo, value})
+        {:noreply, transition: :tr, update: "bar"}
+      end)
+
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = Instrumented.state_timeout(srv)
+      assert_receive {:foo, 0}
+      assert {:end, "bar"} = Instrumented.state(srv)
     end
 
     test "works with delayed transition/idempotent" do

@@ -74,7 +74,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
       assert {:end, ^f} = Instrumented.state(srv)
     end
 
-    test "works with delayed transition/idempotent" do
+    test "works with delayed transition/idempotent, interruptible" do
       test_pid = self()
 
       {:ok, srv} = Instrumented.start_link(fn value ->

@@ -2,8 +2,6 @@ defmodule StateServer do
 
   @switch_doc File.read!("test/examples/switch.exs")
 
-  # TODO: normalize private calls with do_ prefix
-
   @moduledoc """
   A wrapper for `:gen_statem` which preserves `GenServer`-like semantics.
 
@@ -505,21 +503,21 @@ defmodule StateServer do
   @spec callback_mode() :: :handle_event_function
   def callback_mode, do: :handle_event_function
 
-  @spec convert([event]) :: [:gen_statem.event_type]
-  defp convert([]), do: []
-  defp convert([{:internal, x} | rest]), do: [{:next_event, :internal, x} | convert(rest)]
-  defp convert([{:continue, continuation} | rest]), do: [{:next_event, :internal, {:"$continue", continuation}} | convert(rest)]
-  defp convert([{:event_timeout, {payload, time}} | rest]), do: [{:timeout, time, payload} | convert(rest)]
-  defp convert([{:event_timeout, time} | rest]), do: [{:timeout, time, nil} | convert(rest)]
-  defp convert([{:state_timeout, {payload, time}} | rest]), do: [{:state_timeout, time, payload} | convert(rest)]
-  defp convert([{:state_timeout, time} | rest]), do: [{:state_timeout, time, nil} | convert(rest)]
-  defp convert([{:timeout, {payload, time}} | rest]), do: [{{:timeout, nil}, time, payload} | convert(rest)]
-  defp convert([{:timeout, time} | rest]), do: [{{:timeout, nil}, time, nil} | convert(rest)]
-  defp convert([{:transition, tr} | rest]), do: [{:next_event, :internal, {:"$transition", tr}} | convert(rest)]
-  defp convert([{:update, data} | rest]), do: [{:next_event, :internal, {:"$update", data}} | convert(rest)]
-  defp convert([{:goto, state} | rest]), do: [{:next_event, :internal, {:"$goto", state}} | convert(rest)]
-  defp convert([:noop | rest]), do: convert(rest)
-  defp convert([any | rest]), do: [any | convert(rest)]
+  @spec do_event_conversion([event]) :: [:gen_statem.event_type]
+  defp do_event_conversion([]), do: []
+  defp do_event_conversion([{:internal, x} | rest]), do: [{:next_event, :internal, x} | do_event_conversion(rest)]
+  defp do_event_conversion([{:continue, continuation} | rest]), do: [{:next_event, :internal, {:"$continue", continuation}} | do_event_conversion(rest)]
+  defp do_event_conversion([{:event_timeout, {payload, time}} | rest]), do: [{:timeout, time, payload} | do_event_conversion(rest)]
+  defp do_event_conversion([{:event_timeout, time} | rest]), do: [{:timeout, time, nil} | do_event_conversion(rest)]
+  defp do_event_conversion([{:state_timeout, {payload, time}} | rest]), do: [{:state_timeout, time, payload} | do_event_conversion(rest)]
+  defp do_event_conversion([{:state_timeout, time} | rest]), do: [{:state_timeout, time, nil} | do_event_conversion(rest)]
+  defp do_event_conversion([{:timeout, {payload, time}} | rest]), do: [{{:timeout, nil}, time, payload} | do_event_conversion(rest)]
+  defp do_event_conversion([{:timeout, time} | rest]), do: [{{:timeout, nil}, time, nil} | do_event_conversion(rest)]
+  defp do_event_conversion([{:transition, tr} | rest]), do: [{:next_event, :internal, {:"$transition", tr}} | do_event_conversion(rest)]
+  defp do_event_conversion([{:update, data} | rest]), do: [{:next_event, :internal, {:"$update", data}} | do_event_conversion(rest)]
+  defp do_event_conversion([{:goto, state} | rest]), do: [{:next_event, :internal, {:"$goto", state}} | do_event_conversion(rest)]
+  defp do_event_conversion([:noop | rest]), do: do_event_conversion(rest)
+  defp do_event_conversion([any | rest]), do: [any | do_event_conversion(rest)]
 
   @typep internal_event_result :: :gen_statem.event_handler_result(atom)
   @typep internal_data :: %{data: any, module: module}
@@ -534,14 +532,14 @@ defmodule StateServer do
 
     case data.handle_transition.(state, tr, data.data) do
       :noreply ->
-        {:next_state, next_state, data, convert(actions)}
+        {:next_state, next_state, data, do_event_conversion(actions)}
 
       {:noreply, extra_actions} ->
-        {:next_state, next_state, data, convert(actions ++ extra_actions)}
+        {:next_state, next_state, data, do_event_conversion(actions ++ extra_actions)}
     end
   end
 
-  defp translate_reply(msg, from, state, data) do
+  defp do_reply_transation(msg, from, state, data) do
     case msg do
       {:reply, reply} ->
         {:keep_state_and_data, [{:reply, from, reply}]}
@@ -555,17 +553,17 @@ defmodule StateServer do
 
       {:reply, reply, [{:update, new_data} | actions]} ->
         {:keep_state, %{data | data: new_data},
-          [{:reply, from, reply} | convert(actions)]}
+          [{:reply, from, reply} | do_event_conversion(actions)]}
 
       {:reply, reply, actions} ->
         {:keep_state_and_data,
-          [{:reply, from, reply} | convert(actions)]}
+          [{:reply, from, reply} | do_event_conversion(actions)]}
 
       other_msg -> other_msg
     end
   end
 
-  defp translate_noreply(msg, state, data) do
+  defp do_noreply_transation(msg, state, data) do
     case msg do
       :noreply -> {:keep_state_and_data, []}
 
@@ -576,10 +574,10 @@ defmodule StateServer do
         do_transition(state, tr, data, actions)
 
       {:noreply, [{:update, new_data} | actions]} ->
-        {:keep_state, %{data | data: new_data}, convert(actions)}
+        {:keep_state, %{data | data: new_data}, do_event_conversion(actions)}
 
       {:noreply, actions} ->
-        {:keep_state_and_data, convert(actions)}
+        {:keep_state_and_data, do_event_conversion(actions)}
 
       other_msg -> other_msg
     end
@@ -590,18 +588,18 @@ defmodule StateServer do
   def handle_event({:call, from}, content, state, data) do
     content
     |> data.handle_call.(from, state, data.data)
-    |> translate_reply(from, state, data)
-    |> translate_noreply(state, data)
+    |> do_reply_transation(from, state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event(:info, content, state, data) do
     content
     |> data.handle_info.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event(:cast, content, state, data) do
     content
     |> data.handle_cast.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event(:internal, {:"$transition", transition}, state, data) do
     do_transition(state, transition, data, [])
@@ -618,32 +616,32 @@ defmodule StateServer do
   def handle_event(:internal, {:"$continue", continuation}, state, data) do
     continuation
     |> data.handle_continue.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event(:internal, content, state, data) do
     content
     |> data.handle_internal.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event(:timeout, time, state, data) do
     time
     |> data.handle_timeout.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event(:state_timeout, payload, state, data) do
     payload
     |> data.handle_timeout.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event({:timeout, nil}, payload, state, data) do
     payload
     |> data.handle_timeout.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
   def handle_event({:timeout, name}, payload, state, data) do
     {name, payload}
     |> data.handle_timeout.(state, data.data)
-    |> translate_noreply(state, data)
+    |> do_noreply_transation(state, data)
   end
 
   #############################################################################
@@ -685,6 +683,7 @@ defmodule StateServer do
 
   # does a pass over all of the optional callbacks, loading those lambdas
   # into the module struct.  Also loads the module into the selector.
+  # should only be run once, at init() time
   @spec generate_selector(module) :: state
   defp generate_selector(module) do
     @optional_callbacks

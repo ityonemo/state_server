@@ -3,9 +3,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
   use ExUnit.Case, async: true
 
   defmodule Instrumented do
-    use StateServer
-
-    @state_graph [start: [tr: :end], end: []]
+    use StateServer, state_graph: [start: [tr: :end], end: []]
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
@@ -44,7 +42,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:start, ^f} = Instrumented.state(srv)
     end
 
@@ -58,25 +56,25 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:start, "bar"} = Instrumented.state(srv)
     end
 
     test "works with transition/idempotent" do
       test_pid = self()
 
-      {:ok, srv} = Instrumented.start_link(fn value->
+      {:ok, srv} = Instrumented.start_link(fn value ->
         send(test_pid, {:foo, value})
         {:noreply, transition: :tr}
       end)
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:end, ^f} = Instrumented.state(srv)
     end
 
-    test "works with delayed transition/idempotent" do
+    test "works with delayed transition/idempotent, interruptible" do
       test_pid = self()
 
       {:ok, srv} = Instrumented.start_link(fn value ->
@@ -97,7 +95,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
       refute_receive _
 
       assert "foo" = Instrumented.event_timeout(srv, 10)
-      assert_receive {:foo, 10}
+      assert_receive {:foo, nil}
     end
 
     test "works with transition/update" do
@@ -110,7 +108,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:end, "bar"} = Instrumented.state(srv)
     end
   end
@@ -147,7 +145,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
     test "works with transition/idempotent" do
       test_pid = self()
 
-      {:ok, srv} = Instrumented.start_link(fn value->
+      {:ok, srv} = Instrumented.start_link(fn value ->
         send(test_pid, {:foo, value})
         {:noreply, transition: :tr}
       end)

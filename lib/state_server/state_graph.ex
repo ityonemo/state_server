@@ -13,7 +13,7 @@ defmodule StateServer.StateGraph do
   @doc """
   checks the validity of the state graph.
 
-  Should only be called at module compilation time.
+  Should only be called when we build the state graph.
 
   A state graph is valid if and only if all of the following are true:
 
@@ -28,7 +28,7 @@ defmodule StateServer.StateGraph do
   def valid?(stategraph) when is_list(stategraph) do
     # check to make sure everything is a keyword of keywords.
     Enum.each(stategraph, fn
-      {state, transitions} when is_atom(state)->
+      {state, transitions} when is_atom(state) ->
         Enum.each(transitions, fn
           {transition, destination} when
           is_atom(transition) and is_atom(destination) ->
@@ -147,8 +147,29 @@ defmodule StateServer.StateGraph do
   end
 
   @doc """
+  outputs a list of edges of the graph.  Used to generate the `c:StateServer.is_edge/3` guard.
+
+  ```elixir
+  iex> StateServer.StateGraph.edges(start: [t1: :state1, t2: :state2], state1: [t3: :start], state2: [])
+  [start: {:t1, :state1}, start: {:t2, :state2}, state1: {:t3, :start}]
+  ```
+  """
+  @spec edges(t) :: keyword({atom, atom})
+  def edges(state_graph) do
+    Enum.flat_map(state_graph, fn
+      {_, []} -> []
+      {state, transitions} ->
+        Enum.flat_map(transitions, fn
+          {transition, dest} ->
+            [{state, {transition, dest}}]
+        end)
+      _ -> []
+    end)
+  end
+
+  @doc """
   outputs a list of terminal {state, transition} tuples of the graph.  Used to generate the
-  `c:StateServer.is_terminal/2` guard.
+  `c:StateServer.is_terminal_transition/2` guard.
 
   ```elixir
   iex> StateServer.StateGraph.terminal_transitions(start: [t1: :state1, t2: :state2], state1: [], state2: [])
@@ -158,14 +179,22 @@ defmodule StateServer.StateGraph do
   @spec terminal_transitions(t) :: keyword(atom)
   def terminal_transitions(stategraph) do
     t_states = terminal_states(stategraph)
-    Enum.flat_map(stategraph, fn {state, lst} ->
-      Enum.flat_map(lst, fn {tr, dest} ->
-        if dest in t_states do
-          [{state, tr}]
-        else
-          []
-        end
-      end)
+    Enum.flat_map(stategraph, &transitions_for_state(&1, t_states))
+  end
+
+  @spec transitions_for_state({atom, keyword(atom)}, [atom]) :: keyword(atom)
+  defp transitions_for_state({state, trs}, t_states) do
+    Enum.flat_map(trs, fn {tr, dest} ->
+      if dest in t_states, do: [{state, tr}], else: []
     end)
   end
+
+  @doc """
+  converts a list of atoms to a type which is the union of the atom literals
+  """
+  @spec atoms_to_typelist([atom]) :: Macro.t
+  def atoms_to_typelist([]), do: nil
+  def atoms_to_typelist([state]), do: state
+  def atoms_to_typelist([state1, state2]), do: {:|, [], [state1, state2]}
+  def atoms_to_typelist([state | rest]), do: {:|, [], [state, atoms_to_typelist(rest)]}
 end

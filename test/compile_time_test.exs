@@ -1,10 +1,10 @@
 defmodule StateServerTest.CompileTimeTest do
   use ExUnit.Case, async: true
 
-  alias StateServer.AtStateGraphMacro
+  alias StateServer.StateGraph
 
   test "not defining your state_graph causes a compile time error" do
-    assert_raise CompileError, fn -> Code.require_file("test/assets/use_without_graph.exs") end
+    assert_raise ArgumentError, fn -> Code.require_file("test/assets/use_without_graph.exs") end
   end
 
   test "assigning state_graph causes a compile time error" do
@@ -12,8 +12,7 @@ defmodule StateServerTest.CompileTimeTest do
   end
 
   defmodule GraphFunction do
-    use StateServer
-    @state_graph [foo: [bar: :foo]]
+    use StateServer, state_graph: [foo: [bar: :foo]]
 
     @impl true
     def init(_), do: {:ok, :ok}
@@ -24,19 +23,19 @@ defmodule StateServerTest.CompileTimeTest do
   end
 
   test "state typelists are generated correctly" do
-    singleton_state = AtStateGraphMacro.atoms_to_typelist([:foo])
+    singleton_state = StateGraph.atoms_to_typelist([:foo])
     q1 = quote do @type state :: :foo end
     q2 = quote do @type state :: unquote(singleton_state) end
 
     assert q1 == q2
 
-    two_states = AtStateGraphMacro.atoms_to_typelist([:foo, :bar])
+    two_states = StateGraph.atoms_to_typelist([:foo, :bar])
     q3 = quote do @type state :: :foo | :bar end
     q4 = quote do @type state :: unquote(two_states) end
 
     assert q3 == q4
 
-    three_states = AtStateGraphMacro.atoms_to_typelist([:foo, :bar, :baz])
+    three_states = StateGraph.atoms_to_typelist([:foo, :bar, :baz])
     q5 = quote do @type state :: :foo | :bar | :baz end
     q6 = quote do @type state :: unquote(three_states) end
 

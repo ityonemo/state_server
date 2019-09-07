@@ -3,9 +3,7 @@ defmodule StateServerTest.Callbacks.HandleInternalTest do
   use ExUnit.Case, async: true
 
   defmodule Instrumented do
-    use StateServer
-
-    @state_graph [start: [tr: :end], end: []]
+    use StateServer, state_graph: [start: [tr: :end], end: []]
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
@@ -76,6 +74,29 @@ defmodule StateServerTest.Callbacks.HandleInternalTest do
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = StateServer.call(srv, :go)
       assert {:end, "bar"} = Instrumented.state(srv)
+    end
+  end
+
+  defmodule UnInstrumented do
+    use StateServer, state_graph: [start: [tr: :end], end: []]
+    def start_link(_), do: StateServer.start_link(__MODULE__, :ok)
+
+    @impl true
+    def init(_), do: {:ok, :ok}
+
+    @impl true
+    def handle_call(:go, _, _, _) do
+      {:reply, :ok, internal: "foo"}
+    end
+  end
+
+  describe "tests against uninstrumented code" do
+    test "should throw a runtime error" do
+      Process.flag(:trap_exit, true)
+      {:ok, srv} = UnInstrumented.start_link(:ok)
+      StateServer.call(srv, :go)
+      assert_receive {:EXIT, ^srv, {%RuntimeError{message: msg}, _}}
+      assert msg =~ "handle_internal/3"
     end
   end
 end

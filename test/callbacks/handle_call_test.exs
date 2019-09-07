@@ -1,5 +1,3 @@
-# TODO: make sure that the call scheme is well tested
-
 defmodule StateServerTest.Callbacks.HandleCallTest do
 
   use ExUnit.Case, async: true
@@ -23,6 +21,9 @@ defmodule StateServerTest.Callbacks.HandleCallTest do
     def handle_info({:do_reply, from}, _state, _val) do
       reply(from, "foo")
       :noreply
+    end
+    def handle_info({:do_classic_reply, from}, _state, _val) do
+      {:noreply, [{:reply, from, "foo"}]}
     end
   end
 
@@ -53,6 +54,32 @@ defmodule StateServerTest.Callbacks.HandleCallTest do
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = StateServer.call(srv, :go)
       assert {:end, "bar"} = Instrumented.state(srv)
+    end
+  end
+
+  describe "instrumenting handle_call with a classic erlang reply" do
+    test "works with noreply form" do
+      {:ok, srv} = Instrumented.start_link(fn from -> {:noreply, [{:reply, from, "foo"}]} end)
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = StateServer.call(srv, :go)
+      assert {:start, ^f} = Instrumented.state(srv)
+    end
+
+    test "works with classic statem form" do
+      {:ok, srv} = Instrumented.start_link(fn from -> {:keep_state_and_data, [{:reply, from, "foo"}]} end)
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = StateServer.call(srv, :go)
+      assert {:start, ^f} = Instrumented.state(srv)
+    end
+
+    test "works when deferred" do
+      {:ok, srv} = Instrumented.start_link(fn from ->
+        Process.send_after(self(), {:do_classic_reply, from}, 0)
+        :noreply
+      end)
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = StateServer.call(srv, :go)
+      assert {:start, ^f} = Instrumented.state(srv)
     end
   end
 

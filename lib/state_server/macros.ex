@@ -26,8 +26,13 @@ defmodule StateServer.Macros do
       end
     end
 
-    {:def,
+    handler_fn = {:def,
       [context: __MODULE__, import: Kernel],
       [{name, [context: __MODULE__], params}, [do: block]]}
+
+    quote do
+      @doc false
+      unquote(handler_fn)
+    end
   end
 end

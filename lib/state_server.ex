@@ -706,6 +706,7 @@ defmodule StateServer do
   StateServer.Macros.default_handler handle_internal: 3
   StateServer.Macros.default_handler handle_timeout: 3
 
+  @doc false
   @spec handle_info(term, atom, term) :: :noreply
   def handle_info(msg, _state, _data) do
     proc =
@@ -720,6 +721,7 @@ defmodule StateServer do
     :noreply
   end
 
+  @doc false
   @spec handle_transition(atom, atom, term) :: :noreply
   def handle_transition(_state, _transition, _data), do: :noreply
 

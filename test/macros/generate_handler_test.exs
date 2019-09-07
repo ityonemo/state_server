@@ -5,6 +5,7 @@ defmodule StateServerTest.Macros.GenerateHandlerTest do
 
   test "generate_handler snapshot" do
     assert (~S"""
+    @doc false
     def handle_foo(_, _) do
       proc = case Process.info(self(), :registered_name) do
         {_, []} -> self()

@@ -43,7 +43,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.state_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:start, ^f} = Instrumented.state(srv)
     end
 
@@ -57,7 +57,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.state_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:start, "bar"} = Instrumented.state(srv)
     end
 
@@ -71,7 +71,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.state_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:end, ^f} = Instrumented.state(srv)
     end
 
@@ -85,7 +85,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.state_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:end, "bar"} = Instrumented.state(srv)
     end
 
@@ -107,7 +107,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
       assert {:start, "bar"} = Instrumented.state(srv)
 
       # let's be sure that we have gotten the expected response
-      assert_receive {:foo, 10}
+      assert_receive {:foo, nil}
     end
 
     test "is interruptible with state change" do

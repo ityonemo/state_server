@@ -1,6 +1,3 @@
-# TODO: test that all erlang-style timeouts are correctly tested
-# TODO: test that all payload-less timeouts have nil as the payload
-
 defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
 
   use ExUnit.Case, async: true
@@ -20,6 +17,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
     def named_timeout_payload(srv, time \\ 0, payload) do
       StateServer.call(srv, {:named_timeout, payload, time})
     end
+    def unnamed_timeout(srv), do: StateServer.call(srv, :unnamed_timeout)
 
     @impl true
     def handle_call(:state, _from, state, data), do: {:reply, {state, data}}
@@ -29,27 +27,16 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
     def handle_call({:named_timeout, payload, time}, _from, _state, _data) do
       {:reply, "foo", [timeout: {{:bar, payload}, time}]}
     end
+    def handle_call(:unnamed_timeout, _from, _state, _data) do
+      {:reply, "foo", [timeout: 10]}
+    end
 
     @impl true
     def handle_timeout(value, _state, fun), do: fun.(value)
   end
 
-  describe "instrumenting handle_timeout and triggering with named_timeout" do
-    test "works with static/idempotent" do
-      test_pid = self()
-
-      {:ok, srv} = Instrumented.start_link(fn value ->
-        send(test_pid, {:foo, value})
-        :noreply
-      end)
-
-      assert {:start, f} = Instrumented.state(srv)
-      assert "foo" = Instrumented.named_timeout(srv)
-      assert_receive {:foo, :bar}
-      assert {:start, ^f} = Instrumented.state(srv)
-    end
-
-    test "works with static/update" do
+  describe "instrumenting handle_timeout and triggering with unnamed_timeout" do
+    test "works, submitting nil" do
       test_pid = self()
 
       {:ok, srv} = Instrumented.start_link(fn value ->
@@ -57,45 +44,26 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
         {:noreply, update: "bar"}
       end)
 
-      assert {:start, f} = Instrumented.state(srv)
-      assert "foo" = Instrumented.named_timeout(srv)
-      assert_receive {:foo, :bar}
-      assert {:start, "bar"} = Instrumented.state(srv)
+      Instrumented.unnamed_timeout(srv)
+
+      assert_receive {:foo, nil}
     end
 
-    test "works with transition/idempotent" do
+    test "is not interrupted" do
       test_pid = self()
 
       {:ok, srv} = Instrumented.start_link(fn value ->
         send(test_pid, {:foo, value})
-        {:noreply, transition: :tr}
+        {:noreply, update: "bar"}
       end)
 
-      assert {:start, f} = Instrumented.state(srv)
-      assert "foo" = Instrumented.named_timeout(srv)
-      assert_receive {:foo, :bar}
-      assert {:end, ^f} = Instrumented.state(srv)
-    end
+      Instrumented.unnamed_timeout(srv)
 
-    test "works with delayed transition/idempotent" do
-      test_pid = self()
+      assert {:start, _} = Instrumented.state(srv)
 
-      {:ok, srv} = Instrumented.start_link(fn value ->
-        send(test_pid, {:foo, value})
-        {:noreply, transition: :tr}
-      end)
+      assert_receive {:foo, nil}
 
-      assert {:start, f} = Instrumented.state(srv)
-      assert "foo" = Instrumented.named_timeout(srv, 10)
-
-      # calls don't interrupt the named timeout
-      Process.sleep(5)
-      assert {:start, ^f} = Instrumented.state(srv)
-      Process.sleep(10)
-      assert {:end, ^f} = Instrumented.state(srv)
-
-      # let's be sure that we have gotten the expected response
-      assert_receive {:foo, :bar}
+      assert {:start, "bar"} == Instrumented.state(srv)
     end
   end
 

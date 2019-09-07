@@ -42,7 +42,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:start, ^f} = Instrumented.state(srv)
     end
 
@@ -56,7 +56,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:start, "bar"} = Instrumented.state(srv)
     end
 
@@ -70,7 +70,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:end, ^f} = Instrumented.state(srv)
     end
 
@@ -95,7 +95,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
       refute_receive _
 
       assert "foo" = Instrumented.event_timeout(srv, 10)
-      assert_receive {:foo, 10}
+      assert_receive {:foo, nil}
     end
 
     test "works with transition/update" do
@@ -108,7 +108,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
 
       assert {:start, f} = Instrumented.state(srv)
       assert "foo" = Instrumented.event_timeout(srv)
-      assert_receive {:foo, 0}
+      assert_receive {:foo, nil}
       assert {:end, "bar"} = Instrumented.state(srv)
     end
   end

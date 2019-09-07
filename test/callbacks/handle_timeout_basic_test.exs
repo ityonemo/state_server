@@ -35,8 +35,6 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
   end
 
   describe "instrumenting handle_timeout and triggering with named_timeout" do
-
-    @tag :one
     test "works with static/update" do
       test_pid = self()
 
@@ -64,7 +62,6 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
       assert_receive {:foo, :bar}
       assert {:end, ^f} = Instrumented.state(srv)
     end
-
     test "works with delayed transition/idempotent" do
       test_pid = self()
 

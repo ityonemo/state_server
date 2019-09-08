@@ -6,7 +6,7 @@ defmodule StateServerTest do
   use ExUnit.Case, async: true
 
   defmodule Startup do
-    use StateServer, state_graph: [start: []]
+    use StateServer, [start: []]
 
     def start_link(data, opts \\ []) do
       StateServer.start_link(__MODULE__, data, opts)

@@ -5,8 +5,8 @@ defmodule Switch do
   how many times the state of the light switch has changed.
   """
 
-  use StateServer, state_graph: [off: [flip: :on],
-                                 on:  [flip: :off]]
+  use StateServer, off: [flip: :on],
+                   on:  [flip: :off]
 
   @type data :: non_neg_integer
 

@@ -1,3 +1,6 @@
+#TODO: test ignore and {:stop, reason} results from init.
+#TODO: test trapping an erlang-form timeout
+
 defmodule StateServer do
 
   @switch_doc File.read!("test/examples/switch.exs")
@@ -37,7 +40,7 @@ defmodule StateServer do
   the state graph for a light switch might look like this:
 
   ```elixir
-  use StateServer, state_graph: [on: [flip: :off],
+  use StateServer, [on: [flip: :off],
                                  off: [flip: :on]]
   ```
 
@@ -336,19 +339,15 @@ defmodule StateServer do
   """
   @macrocallback is_edge(state::atom, transition::atom, dest::atom) :: Macro.t
 
-  defmacro __using__(opts) do
-
+  defmacro __using__(state_graph) do
     env = __CALLER__
-
-    unless Keyword.has_key?(opts, :state_graph) do
-      raise ArgumentError, "StateServer must have a state_graph parameter."
-    end
 
     # we will want the module name for some documentation
     module_name = (env.module |> Module.split |> tl |> Enum.join("."))
 
+    ([] == state_graph) && raise ArgumentError, "StateServer must have a state_graph parameter."
+
     # pull the state_graph and validate it.
-    state_graph = opts[:state_graph]
     unless StateGraph.valid?(state_graph) do
       raise %CompileError{file: env.file, line: env.line, description: "state_graph sent to StateServer is malformed"}
     end
@@ -414,7 +413,7 @@ defmodule StateServer do
           id: __MODULE__,
           start: {__MODULE__, :start_link, [init_arg]}
         }
-        Supervisor.child_spec(default, unquote(Macro.escape(opts)))
+        Supervisor.child_spec(default)
       end
 
       defoverridable child_spec: 1

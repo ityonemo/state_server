@@ -28,7 +28,7 @@ be found at [https://hexdocs.pm/state_server](https://hexdocs.pm/state_server).
 
 ```elixir
 defmodule Demo do
-  use StateServer, state_graph: [on: [flip: :off], 
+  use StateServer, [on: [flip: :off], 
                                  off: [flip: :on]]
 
   def start_link(_), do: StateServer.start_link(__MODULE__, [], name: Demo)

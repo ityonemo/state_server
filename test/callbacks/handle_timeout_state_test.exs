@@ -3,7 +3,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutStateTest do
   use ExUnit.Case, async: true
 
   defmodule Instrumented do
-    use StateServer, state_graph: [start: [tr: :end], end: []]
+    use StateServer, [start: [tr: :end], end: []]
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 

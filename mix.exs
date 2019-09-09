@@ -9,6 +9,12 @@ defmodule StateServer.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
+      package: [
+        description: "half gen_server, half gen_statem",
+        licenses: "MIT",
+        links: [],
+        source_url: "https://github.com/ityonemo/state_server/"
+      ],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,

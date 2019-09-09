@@ -312,8 +312,8 @@ defmodule StateServer do
   @typep callbacks :: :handle_call | :handle_cast | :handle_info | :handle_internal |
     :handle_continue | :handle_timeout | :handle_transition
 
-  # internal state type
-  @typep state :: %{
+  # internal data type
+  @typep data :: %{
     required(:module) => module,
     required(:data) => term,
     required(callbacks) => function
@@ -462,34 +462,34 @@ defmodule StateServer do
   @typep init_result :: :gen_statem.init_result(atom)
 
   @impl true
-  @spec init(state) :: init_result
-  def init(state = %{module: module}) do
-    case (module.init(state.data)) do
+  @spec init(data) :: init_result
+  def init(init_data = %{module: module}) do
+    case (module.init(init_data.data)) do
       {:ok, data} ->
         {:ok,
           StateGraph.start(module.__state_graph__()),
-          %{state | data: data}}
+          %{init_data | data: data}}
       {:ok, data, continue: continuation} ->
         {:ok,
           StateGraph.start(module.__state_graph__()),
-          %{state | data: data},
+          %{init_data | data: data},
           {:next_event, :internal, {:"$continue", continuation}}}
       {:ok, data, internal: payload} ->
         {:ok,
           StateGraph.start(module.__state_graph__()),
-          %{state | data: data},
+          %{init_data | data: data},
           {:next_event, :internal, payload}}
       {:ok, data, goto: state} ->
-        {:ok, state, %{module: module, data: data}}
+        {:ok, state, %{init_data | module: module, data: data}}
       {:ok, data, goto: state, continue: continuation} ->
         {:ok,
           state,
-          %{state | data: data},
+          %{init_data | data: data},
           {:next_event, :internal, {:"$continue", continuation}}}
       {:ok, data, goto: state, internal: payload} ->
         {:ok,
           state,
-          %{state | data: data},
+          %{init_data | data: data},
           {:next_event, :internal, payload}}
       any -> any
     end
@@ -692,7 +692,7 @@ defmodule StateServer do
   # does a pass over all of the optional callbacks, loading those lambdas
   # into the module struct.  Also loads the module into the selector.
   # should only be run once, at init() time
-  @spec generate_selector(module) :: state
+  @spec generate_selector(module) :: data
   defp generate_selector(module) do
     @optional_callbacks
     |> Enum.flat_map(&(&1))  # note that optional callbacks is an accumulating attribute

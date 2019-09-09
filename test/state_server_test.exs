@@ -49,16 +49,16 @@ defmodule StateServerTest do
 
   test "raises with a strange name entry" do
     assert_raise ArgumentError, fn ->
-      Registry.start_link(keys: :unique, name: "not_an_atom")
+      Startup.start_link("foo", name: "not_an_atom")
     end
 
     assert_raise ArgumentError, fn ->
-      Registry.start_link(keys: :unique, name: {:foo, :bar})
+      Startup.start_link("foo", name: {:foo, :bar})
     end
   end
 
   defmodule StartupInstrumentable do
-    use StateServer, [start: []]
+    use StateServer, [start: [], end: []]
 
     def start_link(fun, opts \\ []) do
       StateServer.start_link(__MODULE__, fun, opts)
@@ -66,6 +66,21 @@ defmodule StateServerTest do
 
     @impl true
     def init(fun), do: fun.()
+
+    @impl true
+    def handle_internal(:foo, _state, test_pid) do
+      send(test_pid, :inside)
+      :noreply
+    end
+
+    @impl true
+    def handle_continue(:foo, _state, test_pid) do
+      send(test_pid, :continue)
+      :noreply
+    end
+
+    @impl true
+    def handle_call(:state, _from, state, _), do: {:reply, state}
   end
 
   test "StateServer started with :ignore can ignore" do
@@ -76,5 +91,31 @@ defmodule StateServerTest do
     assert {:error, :critical} = StartupInstrumentable.start_link(fn
       -> {:stop, :critical}
     end)
+  end
+
+  test "StateServer started with internal message executes it" do
+    test_pid = self()
+    StartupInstrumentable.start_link(fn -> {:ok, test_pid, internal: :foo} end)
+    assert_receive(:inside)
+  end
+
+  test "StateServer started with goto sets state" do
+    test_pid = self()
+    {:ok, pid} = StartupInstrumentable.start_link(fn -> {:ok, test_pid, goto: :end} end)
+    assert :end == StateServer.call(pid, :state)
+  end
+
+  test "StateServer started with goto and a continuation sets state" do
+    test_pid = self()
+    {:ok, pid} = StartupInstrumentable.start_link(fn -> {:ok, test_pid, goto: :end, continue: :foo} end)
+    assert_receive(:continue)
+    assert :end == StateServer.call(pid, :state)
+  end
+
+  test "StateServer started with goto and internal sets state correctly" do
+    test_pid = self()
+    {:ok, pid} = StartupInstrumentable.start_link(fn -> {:ok, test_pid, goto: :end, internal: :foo} end)
+    assert_receive(:inside)
+    assert :end == StateServer.call(pid, :state)
   end
 end

@@ -3,7 +3,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
   use ExUnit.Case, async: true
 
   defmodule Instrumented do
-    use StateServer, state_graph: [start: [tr: :end], end: []]
+    use StateServer, [start: [tr: :end], end: []]
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
@@ -114,6 +114,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
   end
 
   describe "instrumenting handle_timeout and triggering with event_timeout and payload" do
+    @tag :one
     test "works with static/idempotent" do
       test_pid = self()
 

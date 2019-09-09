@@ -6,7 +6,7 @@ defmodule StateServerTest do
   use ExUnit.Case, async: true
 
   defmodule Startup do
-    use StateServer, state_graph: [start: []]
+    use StateServer, [start: []]
 
     def start_link(data, opts \\ []) do
       StateServer.start_link(__MODULE__, data, opts)
@@ -55,5 +55,26 @@ defmodule StateServerTest do
     assert_raise ArgumentError, fn ->
       Registry.start_link(keys: :unique, name: {:foo, :bar})
     end
+  end
+
+  defmodule StartupInstrumentable do
+    use StateServer, [start: []]
+
+    def start_link(fun, opts \\ []) do
+      StateServer.start_link(__MODULE__, fun, opts)
+    end
+
+    @impl true
+    def init(fun), do: fun.()
+  end
+
+  test "StateServer started with :ignore can ignore" do
+    assert :ignore = StartupInstrumentable.start_link(fn -> :ignore end)
+  end
+
+  test "StateServer started with {:stop, reason} returns the error" do
+    assert {:error, :critical} = StartupInstrumentable.start_link(fn
+      -> {:stop, :critical}
+    end)
   end
 end

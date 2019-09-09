@@ -12,7 +12,7 @@ defmodule StateServerTest.CompileTimeTest do
   end
 
   defmodule GraphFunction do
-    use StateServer, state_graph: [foo: [bar: :foo]]
+    use StateServer, [foo: [bar: :foo]]
 
     @impl true
     def init(_), do: {:ok, :ok}

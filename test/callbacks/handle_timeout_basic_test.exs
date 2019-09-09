@@ -1,11 +1,9 @@
-defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
+defmodule StateServerTest.Callbacks.HandleTimeoutBasicTest do
 
   use ExUnit.Case, async: true
 
-  @moduletag :mod
-
   defmodule Instrumented do
-    use StateServer, state_graph: [start: [tr: :end], end: []]
+    use StateServer, [start: [tr: :end], end: []]
 
     def start_link(fun), do: StateServer.start_link(__MODULE__, fun)
 
@@ -119,7 +117,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
   end
 
   defmodule UnInstrumented do
-    use StateServer, state_graph: [start: [tr: :end], end: []]
+    use StateServer, [start: [tr: :end], end: []]
     def start_link(_), do: StateServer.start_link(__MODULE__, :ok)
 
     @impl true

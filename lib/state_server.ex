@@ -1,6 +1,3 @@
-#TODO: test ignore and {:stop, reason} results from init.
-#TODO: test trapping an erlang-form timeout
-
 defmodule StateServer do
 
   @switch_doc File.read!("test/examples/switch.exs")
@@ -23,12 +20,12 @@ defmodule StateServer do
 
   ## Defining the state graph
 
-  The state graph is defined at **compile time** by setting the `state_graph` keyword
-  in the `use` statement.  This `state_graph` is a keyword list of keyword lists.
-  The outer keyword list has the state names (atoms) as keys and the inner keyword
-  lists have transitions (atoms) as keys, and destination states as values.  The
-  first keyword in the state graph is the initial state of the state machine.
-  **Defining the state graph is required**.
+  The state graph is defined at **compile time** using the keyword list in the
+  `use` statement.  This `state_graph` is a keyword list of keyword lists. The
+  outer keyword list has the state names (atoms) as keys and the inner keyword
+  lists have transitions (atoms) as keys, and destination states as values.
+  The first keyword in the state graph is the initial state of the state
+  machine. **Defining the state graph is required**.
 
   At compile time, `StateServer` will verify that all of the state graph's
   transition destinations exist as declared states; you may need to explicitly
@@ -40,8 +37,8 @@ defmodule StateServer do
   the state graph for a light switch might look like this:
 
   ```elixir
-  use StateServer, [on: [flip: :off],
-                                 off: [flip: :on]]
+  use StateServer, on: [flip: :off],
+                   off: [flip: :on]
   ```
 
   #### 'Magic' things
@@ -506,7 +503,7 @@ defmodule StateServer do
   defp do_event_conversion([]), do: []
   defp do_event_conversion([{:internal, x} | rest]), do: [{:next_event, :internal, x} | do_event_conversion(rest)]
   defp do_event_conversion([{:continue, continuation} | rest]), do: [{:next_event, :internal, {:"$continue", continuation}} | do_event_conversion(rest)]
-  defp do_event_conversion([{:event_timeout, {payload, time}} | rest]), do: [{:timeout, time, payload} | do_event_conversion(rest)]
+  defp do_event_conversion([{:event_timeout, {payload, time}} | rest]), do: [{:timeout, time, {:"$event_timeout", payload}} | do_event_conversion(rest)]
   defp do_event_conversion([{:event_timeout, time} | rest]), do: [{:timeout, time, nil} | do_event_conversion(rest)]
   defp do_event_conversion([{:state_timeout, {payload, time}} | rest]), do: [{:state_timeout, time, payload} | do_event_conversion(rest)]
   defp do_event_conversion([{:state_timeout, time} | rest]), do: [{:state_timeout, time, nil} | do_event_conversion(rest)]
@@ -622,8 +619,19 @@ defmodule StateServer do
     |> data.handle_internal.(state, data.data)
     |> do_noreply_transation(state, data)
   end
-  def handle_event(:timeout, time, state, data) do
-    time
+  def handle_event(:timeout, time, state, data) when
+      is_integer(time) or is_nil(time) do
+    nil
+    |> data.handle_timeout.(state, data.data)
+    |> do_noreply_transation(state, data)
+  end
+  def handle_event(:timeout, {:"$event_timeout", payload}, state, data) do
+    payload
+    |> data.handle_timeout.(state, data.data)
+    |> do_noreply_transation(state, data)
+  end
+  def handle_event(:timeout, payload, state, data) do
+    payload
     |> data.handle_timeout.(state, data.data)
     |> do_noreply_transation(state, data)
   end
@@ -637,8 +645,9 @@ defmodule StateServer do
     |> data.handle_timeout.(state, data.data)
     |> do_noreply_transation(state, data)
   end
-  def handle_event({:timeout, name}, payload, state, data) do
-    {name, payload}
+  def handle_event({:timeout, _name}, payload, state, data) do
+    # NB: gen_statem appends the name to the payload by default.
+    payload
     |> data.handle_timeout.(state, data.data)
     |> do_noreply_transation(state, data)
   end

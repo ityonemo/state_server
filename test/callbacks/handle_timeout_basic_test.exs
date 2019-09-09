@@ -1,8 +1,6 @@
-defmodule StateServerTest.Callbacks.HandleTimeoutNamedTest do
+defmodule StateServerTest.Callbacks.HandleTimeoutBasicTest do
 
   use ExUnit.Case, async: true
-
-  @moduletag :mod
 
   defmodule Instrumented do
     use StateServer, [start: [tr: :end], end: []]

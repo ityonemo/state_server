@@ -114,6 +114,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutEventTest do
   end
 
   describe "instrumenting handle_timeout and triggering with event_timeout and payload" do
+    @tag :one
     test "works with static/idempotent" do
       test_pid = self()
 

@@ -98,7 +98,8 @@ defmodule StateServer do
     think will need to be compared against or migrate to a `GenServer`, you should
     use this form.  A typical use of this callback is to handle a long-running
     task that needs to be triggered after initialization.  Because `start_link/2`
-    will timeout, `StateMachine` initialization
+    will timeout, if `StateMachine`, then you should these tasks using the continue
+    callback.
 
   - `c:handle_timeout/3` handles all timeout events.  See the [timeout section](#module-timeouts)
     for more information

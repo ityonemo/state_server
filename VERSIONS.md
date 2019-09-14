@@ -11,6 +11,7 @@
 - actually push latest to master.
 - minor documentation touchup
 - enable documentation code links
+- add licensing document
 
 ## 0.2
 

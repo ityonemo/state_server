@@ -12,9 +12,9 @@ defmodule StateServer.MixProject do
       package: [
         description: "half gen_server, half gen_statem",
         licenses: ["MIT"],
-        links: [],
-        source_url: "https://github.com/ityonemo/state_server/"
+        links: %{"GitHub" => "https://github.com/RstorLabs/ex_dhcp"}
       ],
+      source_url: "https://github.com/ityonemo/state_server/",
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,

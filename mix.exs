@@ -9,12 +9,18 @@ defmodule StateServer.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
+      package: [
+        description: "half gen_server, half gen_statem",
+        licenses: ["MIT"],
+        links: [],
+        source_url: "https://github.com/ityonemo/state_server/"
+      ],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
-        "coveralls.html": :test,
-        docs: :docs]
+        "coveralls.html": :test],
+      docs: [main: "StateServer", extras: ["README.md"]]
     ]
   end
 
@@ -27,7 +33,7 @@ defmodule StateServer.MixProject do
   defp deps do
     [
       {:credo, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.21.1", only: :docs, runtime: false},
+      {:ex_doc, "~> 0.21.1", only: :dev, runtime: false},
       {:excoveralls, "~> 0.11", only: [:dev, :test]},
       {:dialyxir, "~> 0.5", only: :dev, runtime: false}
     ]

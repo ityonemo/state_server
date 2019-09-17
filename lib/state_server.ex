@@ -1,6 +1,13 @@
 defmodule StateServer do
 
-  @switch_doc File.read!("test/examples/switch.exs")
+  @test_path "test/examples/switch.exs"
+  @switch_doc (if File.exists?(@test_path) do
+    File.read!(@test_path)
+  else
+    Mix.Project.deps_path()
+    |> Path.join("state_server/" <> @test_path)
+    |> File.read!
+  end)
 
   @moduledoc """
   A wrapper for `:gen_statem` which preserves `GenServer`-like semantics.

@@ -17,6 +17,10 @@
 
 - fix bug where it fails to compile when it's a mix dependency
 
+### 0.1.3
+
+- fix child_spec/2 bug
+
 ## 0.2
 
 (planned)

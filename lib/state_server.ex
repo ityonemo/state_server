@@ -1,4 +1,7 @@
 defmodule StateServer do
+
+  @state_server_code File.read!("priv/switch.exs")
+
   @moduledoc """
   A wrapper for `:gen_statem` which preserves `GenServer`-like semantics.
 
@@ -184,6 +187,12 @@ defmodule StateServer do
   you will then be able to pattern match this in your `c:handle_timeout/3`
   headers.  If you do not include a payload, then they will be explicitly sent
   a `nil` value.
+
+  ## Example implementation:
+
+  ```elixir
+  #{@state_server_code}
+  ```
   """
 
   @behaviour :gen_statem
@@ -401,7 +410,7 @@ defmodule StateServer do
           id: __MODULE__,
           start: {__MODULE__, :start_link, [init_arg]}
         }
-        Supervisor.child_spec(default)
+        Supervisor.child_spec(default, [])
       end
 
       defoverridable child_spec: 1

@@ -1,4 +1,4 @@
-Code.require_file("test/examples/switch.exs")
+Code.require_file("priv/switch.exs")
 
 defmodule StateServerTest.SwitchTest do
 

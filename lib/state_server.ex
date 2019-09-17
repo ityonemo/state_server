@@ -1,14 +1,4 @@
 defmodule StateServer do
-
-  @test_path "test/examples/switch.exs"
-  @switch_doc (if File.exists?(@test_path) do
-    File.read!(@test_path)
-  else
-    Mix.Project.deps_path()
-    |> Path.join("state_server/" <> @test_path)
-    |> File.read!
-  end)
-
   @moduledoc """
   A wrapper for `:gen_statem` which preserves `GenServer`-like semantics.
 
@@ -194,13 +184,6 @@ defmodule StateServer do
   you will then be able to pattern match this in your `c:handle_timeout/3`
   headers.  If you do not include a payload, then they will be explicitly sent
   a `nil` value.
-
-  ## Example:
-
-  ```elixir
-  #{@switch_doc}
-  ```
-
   """
 
   @behaviour :gen_statem

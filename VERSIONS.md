@@ -13,6 +13,10 @@
 - enable documentation code links
 - add licensing document
 
+### 0.1.2
+
+- fix bug where it fails to compile when it's a mix dependency
+
 ## 0.2
 
 (planned)

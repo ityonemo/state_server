@@ -413,7 +413,7 @@ defmodule StateServer do
         Supervisor.child_spec(default, overrides)
       end
 
-      defoverridable child_spec: 1
+      defoverridable child_spec: 2
     end
   end
 

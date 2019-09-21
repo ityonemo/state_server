@@ -141,6 +141,42 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
     assert {:end, "foo"} == Instrumented.state(srv)
   end
 
+  test "a transition event can be cancelled" do
+    test_pid = self()
+
+    {:ok, srv} = Instrumented.start_link(fn state, tr ->
+      send(test_pid, {:reply, state, tr})
+      :cancel
+    end)
+
+    assert {:start, f} = Instrumented.state(srv)
+
+    StateServer.cast(srv, {:delay, test_pid})
+    receive do :deferral -> send(srv, :deferred) end
+
+    assert_receive {:reply, :start, :tr}
+
+    assert {:start, ^f} = Instrumented.state(srv)
+  end
+
+  test "a transition cancellation can contain instructions in the payload" do
+    test_pid = self()
+
+    {:ok, srv} = Instrumented.start_link(fn state, tr ->
+      send(test_pid, {:reply, state, tr})
+      {:cancel, update: "foo"}
+    end)
+
+    assert {:start, _f} = Instrumented.state(srv)
+
+    StateServer.cast(srv, {:transition, :tr})
+
+    assert_receive {:reply, :start, :tr}
+
+    assert {:start, "foo"} == Instrumented.state(srv)
+  end
+
+
   test "a goto statement doesn't trigger transitioning" do
     test_pid = self()
 

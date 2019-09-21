@@ -334,6 +334,10 @@ defmodule StateServer do
   triggered when a state change has been initiated via a `{:transition, transition}`
   event.
 
+  should emit `:noreply`, or `{:noreply, extra_actions}` to handle the normal case
+  when the transition should proceed.  If the transition should be cancelled,
+  emit `:cancel` or `{:cancel, extra_actions}`.
+
   NB: you may want to use the `c:is_terminal_transition/2` or the `c:is_edge/3`
   callback defguards here.
   """
@@ -559,6 +563,12 @@ defmodule StateServer do
     end
 
     case data.handle_transition.(state, tr, data.data) do
+      :cancel ->
+        {:keep_state, data, do_event_conversion(actions)}
+
+      {:cancel, extra_actions} ->
+        {:keep_state, data, do_event_conversion(actions ++ extra_actions)}
+
       :noreply ->
         {:next_state, next_state, data, do_event_conversion(actions)}
 

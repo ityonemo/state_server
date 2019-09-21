@@ -507,7 +507,7 @@ defmodule StateServer do
     next_state = module.__transition__(state, tr)
 
     unless next_state do
-      raise InvalidTransitionError, "transtion #{tr} does not exist in #{module}"
+      raise InvalidTransitionError, "transition #{tr} does not exist in #{module}"
     end
 
     case data.handle_transition.(state, tr, data.data) do

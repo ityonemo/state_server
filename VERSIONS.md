@@ -21,9 +21,20 @@
 
 - fix child_spec/2 bug
 
+### 0.1.4
+
+- implementation of timeout on startup
+- implemented transition cancellation
+- made guards optional callbacks
+- other cosmetic changes
+
 ## 0.2
 
 (planned)
 
 - organization of function definitions by state
 - better compatibility with gen_statem modules by providing `handle_event/3`
+
+### Unscheduled
+
+- implementation of timeout cancellation

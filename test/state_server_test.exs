@@ -80,6 +80,12 @@ defmodule StateServerTest do
     end
 
     @impl true
+    def handle_timeout(_payload, _state, test_pid) do
+      send(test_pid, :timeout)
+      :noreply
+    end
+
+    @impl true
     def handle_call(:state, _from, state, _), do: {:reply, state}
   end
 
@@ -97,6 +103,14 @@ defmodule StateServerTest do
     test_pid = self()
     StartupInstrumentable.start_link(fn -> {:ok, test_pid, internal: :foo} end)
     assert_receive(:inside)
+  end
+
+  test "StateServer started with timeout waits as expected" do
+    test_pid = self()
+    {:ok, _pid} = StartupInstrumentable.start_link(fn -> {:ok, test_pid, timeout: {:foo, 200}} end)
+    refute_receive(:timeout)
+    Process.sleep(200)
+    assert_receive(:timeout)
   end
 
   test "StateServer started with goto sets state" do
@@ -118,4 +132,14 @@ defmodule StateServerTest do
     assert_receive(:inside)
     assert :end == StateServer.call(pid, :state)
   end
+
+  test "StateServer started with goto and timeout works as expected" do
+    test_pid = self()
+    {:ok, pid} = StartupInstrumentable.start_link(fn -> {:ok, test_pid, goto: :end, timeout: {:foo, 200}} end)
+    refute_receive(:timeout)
+    Process.sleep(200)
+    assert_receive(:timeout)
+    assert :end == StateServer.call(pid, :state)
+  end
+
 end

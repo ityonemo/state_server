@@ -448,33 +448,31 @@ defmodule StateServer do
   @impl true
   @spec init(data) :: init_result
   def init(init_data = %{module: module}) do
+    default_state = StateGraph.start(module.__state_graph__())
+
     case (module.init(init_data.data)) do
-      {:ok, data} ->
-        {:ok,
-          StateGraph.start(module.__state_graph__()),
-          %{init_data | data: data}}
+      {:ok, data} -> {:ok, default_state, %{init_data | data: data}}
       {:ok, data, continue: continuation} ->
-        {:ok,
-          StateGraph.start(module.__state_graph__()),
-          %{init_data | data: data},
+        {:ok, default_state, %{init_data | data: data},
           {:next_event, :internal, {:"$continue", continuation}}}
       {:ok, data, internal: payload} ->
-        {:ok,
-          StateGraph.start(module.__state_graph__()),
-          %{init_data | data: data},
+        {:ok, default_state, %{init_data | data: data},
           {:next_event, :internal, payload}}
+      {:ok, data, timeout: {payload, time}} ->
+        {:ok, default_state, %{init_data | data: data},
+          {{:timeout, nil}, time, payload}}
+
       {:ok, data, goto: state} ->
-        {:ok, state, %{init_data | module: module, data: data}}
+        {:ok, state, %{init_data | data: data}}
       {:ok, data, goto: state, continue: continuation} ->
-        {:ok,
-          state,
-          %{init_data | data: data},
+        {:ok, state, %{init_data | data: data},
           {:next_event, :internal, {:"$continue", continuation}}}
       {:ok, data, goto: state, internal: payload} ->
-        {:ok,
-          state,
-          %{init_data | data: data},
+        {:ok, state, %{init_data | data: data},
           {:next_event, :internal, payload}}
+      {:ok, data, goto: state, timeout: {payload, time}} ->
+        {:ok, state, %{init_data | data: data},
+          {{:timeout, nil}, time, payload}}
       any -> any
     end
   end

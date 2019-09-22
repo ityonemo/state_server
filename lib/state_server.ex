@@ -365,6 +365,8 @@ defmodule StateServer do
     handle_internal: 3, handle_continue: 3, handle_timeout: 3, handle_transition: 3,
     is_terminal: 1, is_terminal_transition: 2, is_edge: 3]
 
+  @macro_callbacks [:is_terminal, :is_terminal_transition, :is_edge]
+
   @typep callbacks :: :handle_call | :handle_cast | :handle_info | :handle_internal |
     :handle_continue | :handle_timeout | :handle_transition
 
@@ -402,7 +404,7 @@ defmodule StateServer do
     |> StateGraph.atoms_to_typelist
 
     quote do
-      import StateServer, only: [reply: 2]
+      import StateServer, only: [reply: 2, defstate: 3]
 
       @behaviour StateServer
 
@@ -453,6 +455,10 @@ defmodule StateServer do
       end
 
       defoverridable child_spec: 2
+
+      # keep track of __body_modules__
+      Module.register_attribute(__MODULE__, :__body_modules__, accumulate: true)
+      @before_compile StateServer
     end
   end
 
@@ -722,12 +728,20 @@ defmodule StateServer do
   end
 
   # checks if a module implements a certain functional callback,
-  # if it does, then add the appropriate lambda into the map, otherwise,
+  # if it does, then add the appropriate lambda into the map.
+  # if it doesn't, but has a state shim, then use that.  Otherwise,
   # fall back on the default which appears in this module.
-  @spec add_callback(map, module, atom, non_neg_integer) :: map
-  defp add_callback(selector, module, fun, arity) do
-    exported? = function_exported?(module, fun, arity)
-    target = :erlang.make_fun((if exported?, do: module, else: __MODULE__), fun, arity)
+  @spec add_callback(map, module, {atom, non_neg_integer}) :: map
+  defp add_callback(selector, module, {fun, arity}) do
+    shim = state_shim_for(fun)
+    target = cond do
+      function_exported?(module, fun, arity) ->
+        :erlang.make_fun(module, fun, arity)
+      function_exported?(module, shim, arity) ->
+        :erlang.make_fun(module, shim, arity)
+      true ->
+        :erlang.make_fun(__MODULE__, fun, arity)
+    end
     Map.put(selector, fun, target)
   end
 
@@ -738,10 +752,8 @@ defmodule StateServer do
   defp generate_selector(module) do
     @optional_callbacks
     |> Enum.flat_map(&(&1))  # note that optional callbacks is an accumulating attribute
-    |> Enum.reduce(%{module: module, data: nil}, fn
-      {fun, arity}, selector ->
-        add_callback(selector, module, fun, arity)
-    end)
+    |> Enum.reject(fn {fun, _} -> fun in @macro_callbacks end) #ignore is_ functions.
+    |> Enum.reduce(%{module: module, data: nil}, &add_callback(&2, module, &1))
   end
 
   ######################################################################
@@ -785,5 +797,65 @@ defmodule StateServer do
 
   defp format_status_default(:terminate, data), do: data.data
   defp format_status_default(_, data), do: [{:data, [{"State", data.data}]}]
+
+  ###############################################################################
+  ## State modules
+
+  # TODO: move these into the macros module?
+
+  defmacro defstate(module_ast = {:__aliases__, _, [module_alias]}, [for: state], code) do
+    module_name = Module.concat(__CALLER__.module, module_alias)
+    code! = inject_behaviour(code)
+    quote do
+      @__body_modules__ {unquote(state), unquote(module_name)}
+      defmodule unquote(module_ast), unquote(code!)
+    end
+  end
+
+  defp inject_behaviour([do: {:__block__, [], codelines}]) do
+    [do: {:__block__, [], [quote do
+      @behaviour StateServer.State
+    end | codelines]
+    }]
+  end
+
+  defmacro __before_compile__(_) do
+    body_modules = Module.get_attribute(__CALLER__.module, :__body_modules__)
+
+    shims = @optional_callbacks
+    |> Enum.flat_map(&(&1))
+    |> Enum.reject(fn {fun, _} -> fun in @macro_callbacks end)
+    |> Enum.map(&make_shim(&1, body_modules))
+
+    quote do
+      unquote(shims)
+    end
+  end
+
+  @spec state_shim_for(atom) :: atom
+  defp state_shim_for(fun) do
+    String.to_atom("__" <> Atom.to_string(fun) <> "_shim__")
+  end
+
+  defp make_shim({fun, arity}, body_modules) do
+    shim_parts = Enum.map(body_modules, fn {state, module} ->
+      if function_exported?(module, fun, arity - 1) do
+        make_function_for(module, fun, state)
+      end
+    end)
+    quote do
+      unquote(shim_parts)
+    end
+  end
+
+  # handle_call is exceptional since it is a /4 function
+  defp make_function_for(module, :handle_call, state) do
+    quote do
+      @doc false
+      def __handle_call_shim__(msg, from, unquote(state), data) do
+        unquote(module).handle_call(msg, from, data)
+      end
+    end
+  end
 
 end

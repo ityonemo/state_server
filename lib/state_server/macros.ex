@@ -11,6 +11,9 @@ defmodule StateServer.Macros do
     fun = "#{name}/#{arity}"
     params = Enum.map(1..arity, fn _ -> {:_, [], Elixir} end)
 
+    prefix = "attempted to call #{fun} for StateServer "
+    postfix = " but no #{fun} clause was provided"
+
     # block comes from GenServer implementation
     block = quote do
       proc = case Process.info(self(), :registered_name) do
@@ -20,7 +23,7 @@ defmodule StateServer.Macros do
 
       case :erlang.phash2(1, 1) do
         0 ->
-          raise "attempted to call StateServer #{inspect(proc)} but no #{unquote(fun)} clause was provided"
+          raise unquote(prefix) <> inspect(proc) <> unquote(postfix)
         1 ->
           {:stop, {:EXIT, "call error"}}
       end

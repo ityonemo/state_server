@@ -2,9 +2,7 @@ defmodule StateServerTest.StateModule.HandleTransitionTest do
 
   use ExUnit.Case, async: true
 
-  # TODO: change the names of all of these from "Instrumented"
-
-  defmodule Instrumented do
+  defmodule Undeferred do
     use StateServer, [start: [tr: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -28,7 +26,7 @@ defmodule StateServerTest.StateModule.HandleTransitionTest do
 
   describe "when you implement a state with a handle_transition function" do
     test "it gets called by the outside module" do
-      Instrumented.start_link(self())
+      Undeferred.start_link(self())
       refute_receive _
       Process.sleep(100)
       assert_receive {:response, "foo"}

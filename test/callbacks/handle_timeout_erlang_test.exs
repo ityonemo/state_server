@@ -62,7 +62,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutErlangTest do
 
       Instrumented.timeout(srv, {{:timeout, :foo}, 10, "bar"})
 
-      assert_receive {:foo, "bar"}
+      assert_receive {:foo, {:foo, "bar"}}
     end
   end
 

@@ -132,7 +132,8 @@ defmodule StateServer do
   {:event_timeout, time}               # sends an event timeout without a payload
   {:state_timeout, {payload, time}}    # sends a state timeout with a payload
   {:state_timeout, time}               # sends a state timeout without a payload
-  {:timeout, {payload, time}}          # sends a plain timeout with a payload
+  {:timeout, {name, payload, time}}    # sends a plain timeout with a name, and a payload
+  {:timeout, {name, time}}             # sends a plain timeout with a name, but no payload
   {:timeout, time}                     # sends a plain timeout without a payload
   :noop                                # does nothing
   ```
@@ -239,6 +240,8 @@ defmodule StateServer do
       replies :: [:gen_statem.reply_action] | :gen_statem.reply_action,
       new_data :: term}
 
+  @type timeout_payload :: {name :: atom, payload :: term} | (name :: atom) | (payload :: term)
+
   @doc """
   starts the state machine, similar to `c:GenServer.init/1`
 
@@ -332,7 +335,7 @@ defmodule StateServer do
   @doc """
   triggered when a set timeout event has timed out.  See [timeouts](#module-timeouts)
   """
-  @callback handle_timeout(payload::term, state :: atom, data :: term) ::
+  @callback handle_timeout(payload::timeout_payload, state :: atom, data :: term) ::
     noreply_response | stop_response | :defer
 
   @doc """
@@ -554,7 +557,8 @@ defmodule StateServer do
   defp do_event_conversion([{:event_timeout, time} | rest]), do: [{:timeout, time, nil} | do_event_conversion(rest)]
   defp do_event_conversion([{:state_timeout, {payload, time}} | rest]), do: [{:state_timeout, time, payload} | do_event_conversion(rest)]
   defp do_event_conversion([{:state_timeout, time} | rest]), do: [{:state_timeout, time, nil} | do_event_conversion(rest)]
-  defp do_event_conversion([{:timeout, {payload, time}} | rest]), do: [{{:timeout, nil}, time, payload} | do_event_conversion(rest)]
+  defp do_event_conversion([{:timeout, {name, payload, time}} | rest]), do: [{{:timeout, name}, time, payload} | do_event_conversion(rest)]
+  defp do_event_conversion([{:timeout, {name, time}} | rest]), do: [{{:timeout, name}, time} | do_event_conversion(rest)]
   defp do_event_conversion([{:timeout, time} | rest]), do: [{{:timeout, nil}, time, nil} | do_event_conversion(rest)]
   defp do_event_conversion([{:transition, tr} | rest]), do: [{:next_event, :internal, {:"$transition", tr}} | do_event_conversion(rest)]
   defp do_event_conversion([{:update, data} | rest]), do: [{:next_event, :internal, {:"$update", data}} | do_event_conversion(rest)]
@@ -713,9 +717,9 @@ defmodule StateServer do
     |> do_defer_translation(:handle_timeout, payload, state, data)
     |> do_noreply_translation(state, data)
   end
-  def handle_event({:timeout, _name}, payload, state, data) do
+  def handle_event({:timeout, name}, payload, state, data) do
     # NB: gen_statem appends the name to the payload by default.
-    payload
+    {name, payload}
     |> data.handle_timeout.(state, data.data)
     |> do_defer_translation(:handle_timeout, payload, state, data)
     |> do_noreply_translation(state, data)

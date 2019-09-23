@@ -23,7 +23,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutBasicTest do
       {:reply, "foo", [timeout: {:bar, time}]}
     end
     def handle_call({:named_timeout, payload, time}, _from, _state, _data) do
-      {:reply, "foo", [timeout: {{:bar, payload}, time}]}
+      {:reply, "foo", [timeout: {:bar, payload, time}]}
     end
     def handle_call(:unnamed_timeout, _from, _state, _data) do
       {:reply, "foo", [timeout: 10]}

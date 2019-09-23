@@ -404,7 +404,7 @@ defmodule StateServer do
     |> StateGraph.atoms_to_typelist
 
     quote do
-      import StateServer, only: [reply: 2, defstate: 3, defer: 1]
+      import StateServer, only: [reply: 2, defstate: 3, defstate: 2, defer: 1]
 
       @behaviour StateServer
 
@@ -817,14 +817,19 @@ defmodule StateServer do
   ###############################################################################
   ## State modules
 
-  # TODO: move these into the macros module?
-
   defmacro defstate(module_ast = {:__aliases__, _, [module_alias]}, [for: state], code) do
     module_name = Module.concat(__CALLER__.module, module_alias)
     code! = inject_behaviour(code)
     quote do
       @__body_modules__ {unquote(state), unquote(module_name)}
       defmodule unquote(module_ast), unquote(code!)
+    end
+  end
+
+  defmacro defstate({:__aliases__, _, [module_alias]}, [for: state]) do
+    module_name = Module.concat(:Elixir, module_alias)
+    quote do
+      @__body_modules__ {unquote(state), unquote(module_name)}
     end
   end
 

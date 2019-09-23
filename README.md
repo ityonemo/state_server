@@ -15,7 +15,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:state_server, "~> 0.1.0"}
+    {:state_server, "~> 0.2.1"}
   ]
 end
 ```

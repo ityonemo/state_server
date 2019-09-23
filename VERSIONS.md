@@ -32,6 +32,10 @@
 
 - organization of function definitions by state
 
+## 0.2.1
+
+- better support for named timeouts
+
 ### Unscheduled
 
 - better compatibility with gen_statem modules by providing `handle_event/3`

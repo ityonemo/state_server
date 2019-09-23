@@ -558,7 +558,7 @@ defmodule StateServer do
   defp do_event_conversion([{:state_timeout, {payload, time}} | rest]), do: [{:state_timeout, time, payload} | do_event_conversion(rest)]
   defp do_event_conversion([{:state_timeout, time} | rest]), do: [{:state_timeout, time, nil} | do_event_conversion(rest)]
   defp do_event_conversion([{:timeout, {name, payload, time}} | rest]), do: [{{:timeout, name}, time, payload} | do_event_conversion(rest)]
-  defp do_event_conversion([{:timeout, {name, time}} | rest]), do: [{{:timeout, name}, time} | do_event_conversion(rest)]
+  defp do_event_conversion([{:timeout, {name, time}} | rest]), do: [{{:timeout, name}, time, nil} | do_event_conversion(rest)]
   defp do_event_conversion([{:timeout, time} | rest]), do: [{{:timeout, nil}, time, nil} | do_event_conversion(rest)]
   defp do_event_conversion([{:transition, tr} | rest]), do: [{:next_event, :internal, {:"$transition", tr}} | do_event_conversion(rest)]
   defp do_event_conversion([{:update, data} | rest]), do: [{:next_event, :internal, {:"$update", data}} | do_event_conversion(rest)]
@@ -717,11 +717,16 @@ defmodule StateServer do
     |> do_defer_translation(:handle_timeout, payload, state, data)
     |> do_noreply_translation(state, data)
   end
+  def handle_event({:timeout, name}, nil, state, data) do
+    name
+    |> data.handle_timeout.(state, data.data)
+    |> do_defer_translation(:handle_timeout, name, state, data)
+    |> do_noreply_translation(state, data)
+  end
   def handle_event({:timeout, name}, payload, state, data) do
-    # NB: gen_statem appends the name to the payload by default.
     {name, payload}
     |> data.handle_timeout.(state, data.data)
-    |> do_defer_translation(:handle_timeout, payload, state, data)
+    |> do_defer_translation(:handle_timeout, {name, payload}, state, data)
     |> do_noreply_translation(state, data)
   end
 

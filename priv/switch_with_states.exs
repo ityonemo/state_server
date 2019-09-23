@@ -3,6 +3,9 @@ defmodule SwitchWithStates do
   @doc """
   implements a light switch as a state server.  In data, it keeps a count of
   how many times the state of the light switch has changed.
+
+  On transition, it sends to standard error a comment that it has been flipped.
+  Note that the implementations are different between the two states.
   """
 
   use StateServer, off: [flip: :on],
@@ -23,6 +26,8 @@ defmodule SwitchWithStates do
     {:reply, :ok, transition: :flip}
   end
   defer handle_call
+  # we must defer the handle_call statement because there are both shared and
+  # individual implementation of handle_call features.
 
   defstate Off, for: :off do
     @impl true

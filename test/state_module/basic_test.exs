@@ -48,4 +48,14 @@ defmodule StateServerTest.StateModule.BasicTest do
     end
   end
 
+  describe "when you try to bind modules to invalid states" do
+    test "it should die when you have a do block" do
+      assert_raise ArgumentError, fn -> Code.require_file("test/assets/bad_state_binding.exs") end
+    end
+
+    test "it should die when you don't have a do block" do
+      assert_raise ArgumentError, fn -> Code.require_file("test/assets/bad_state_binding_no_block.exs") end
+    end
+  end
+
 end

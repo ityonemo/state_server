@@ -188,7 +188,12 @@ defmodule StateServer do
   headers.  If you do not include a payload, then they will be explicitly sent
   a `nil` value.
 
-  ## Example implementation:
+  ## Organizing your code
+
+  If you would like to organize your implementations by state, consider using
+  the `StateServer.State` behaviour pattern.
+
+  ## Example basic implementation:
 
   ```elixir
   #{@state_server_code}
@@ -841,7 +846,15 @@ defmodule StateServer do
   end
 
   defmacro __before_compile__(_) do
+
+    state_graph = Module.get_attribute(__CALLER__.module, :state_graph)
     body_modules = Module.get_attribute(__CALLER__.module, :__body_modules__)
+
+    Enum.each(Keyword.keys(body_modules), fn state ->
+      unless Keyword.has_key?(state_graph, state) do
+        raise ArgumentError, "you attempted to bind a module to nonexistent state #{state}"
+      end
+    end)
 
     shims = @optional_callbacks
     |> Enum.flat_map(&(&1))

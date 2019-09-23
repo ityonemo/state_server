@@ -1,5 +1,29 @@
 defmodule StateServer.State do
 
+  @state_server_with_states_code File.read!("priv/switch_with_states.exs")
+
+  @moduledoc """
+  A behaviour that lets you organize code for your StateServer states.
+
+  ## Organization
+
+  When you define your StateServer, the StateServer module gives you the
+  opportunity to define **state modules**.  These are typically (but not
+  necessarily) submodules scoped under the main StateServer module.  In
+  this way, your code for handling events can be neatly organized by
+  state.  In some (but not all) cases, this may be the most appropriate
+  way to keep your state machine codebase sane.
+
+  ## Example
+
+  The following code should produce a "light switch" state server that
+  announces when it's been flipped.
+
+  ```elixir
+  #{@state_server_with_states_code}
+  ```
+  """
+
   @type from :: StateServer.from
   @type reply_response :: StateServer.reply_response
   @type noreply_response :: StateServer.noreply_response

@@ -45,6 +45,8 @@ defmodule StateServer.Macros do
     end
   end
 
+  # TODO: write snapshot tests on this!
+
   defmacro do_defer_translation(prev, :handle_call, payload, from, state, data) do
     default_handler_code = default_failure_code(:handle_call, 4)
     quote do
@@ -52,7 +54,7 @@ defmodule StateServer.Macros do
       |> case do
         :defer ->
           if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
-            unquote(data).module.__handle_call_shim__(unquote(payload), unquote(from), unquote(state), unquote(data))
+            unquote(data).module.__handle_call_shim__(unquote(payload), unquote(from), unquote(state), unquote(data).data)
           else
             unquote(default_handler_code)
           end
@@ -69,7 +71,7 @@ defmodule StateServer.Macros do
       |> case do
         :defer ->
           if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
-            unquote(data).module.unquote(shim_fn)(unquote(payload), unquote(state), unquote(data))
+            unquote(data).module.unquote(shim_fn)(unquote(payload), unquote(state), unquote(data).data)
           else
             unquote(default_handler_code)
           end

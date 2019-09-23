@@ -560,6 +560,8 @@ defmodule StateServer do
   @typep internal_event_result :: :gen_statem.event_handler_result(atom)
   @typep internal_data :: %{data: any, module: module}
 
+  import StateServer.Macros, only: [do_defer_translation: 5, do_defer_translation: 6]
+
   defp do_transition(state, tr, data = %{module: module}, actions) do
 
     next_state = module.__transition__(state, tr)
@@ -568,7 +570,10 @@ defmodule StateServer do
       raise InvalidTransitionError, "transition #{tr} does not exist in #{module}"
     end
 
-    case data.handle_transition.(state, tr, data.data) do
+    state
+    |> data.handle_transition.(tr, data.data)
+    |> do_defer_translation(:handle_transition, state, tr, data)
+    |> case do
       :cancel ->
         {:keep_state, data, do_event_conversion(actions)}
 
@@ -627,8 +632,6 @@ defmodule StateServer do
     end
   end
 
-  import StateServer.Macros, only: [do_defer_translation: 5, do_defer_translation: 6]
-
   @impl true
   @spec handle_event(event, any, atom, internal_data) :: internal_event_result
   def handle_event({:call, from}, content, state, data) do
@@ -651,9 +654,7 @@ defmodule StateServer do
     |> do_noreply_translation(state, data)
   end
   def handle_event(:internal, {:"$transition", transition}, state, data) do
-    state
-    |> do_transition(transition, data, [])
-    |> do_defer_translation(:handle_transition, transition, state, data)
+    do_transition(state, transition, data, [])
   end
   def handle_event(:internal, {:"$goto", state}, _state, data = %{module: module}) do
     unless Keyword.has_key?(module.__state_graph__, state) do

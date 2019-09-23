@@ -176,7 +176,6 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
     assert {:start, "foo"} == Instrumented.state(srv)
   end
 
-
   test "a goto statement doesn't trigger transitioning" do
     test_pid = self()
 

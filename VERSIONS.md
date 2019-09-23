@@ -30,11 +30,9 @@
 
 ## 0.2
 
-(planned)
-
 - organization of function definitions by state
-- better compatibility with gen_statem modules by providing `handle_event/3`
 
 ### Unscheduled
 
+- better compatibility with gen_statem modules by providing `handle_event/3`
 - implementation of timeout cancellation

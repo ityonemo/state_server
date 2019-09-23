@@ -14,7 +14,7 @@ defmodule StateServerTest.Macros.GenerateHandlerTest do
 
       case :erlang.phash2(1, 1) do
         0 ->
-          raise "attempted to call StateServer #{inspect(proc)} but no #{"handle_foo/2"} clause was provided"
+          raise "attempted to call handle_foo/2 for StateServer " <> inspect(proc) <> " but no handle_foo/2 clause was provided"
         1 ->
           {:stop, {:EXIT, "call error"}}
       end

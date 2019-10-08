@@ -36,6 +36,10 @@
 
 - better support for named timeouts
 
+## 0.2.2
+
+- does child_spec/1 correctly (OTP is hard!)
+
 ### Unscheduled
 
 - better compatibility with gen_statem modules by providing `handle_event/3`

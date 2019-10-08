@@ -24,8 +24,8 @@ defmodule StateServerTest.OtpTest do
 
     def start_link(opts), do: StateServer.start_link(__MODULE__, :ok, opts)
 
-    def child_spec(arg, overrides) do
-      super(arg, overrides ++ [restart: :transient])
+    def child_spec(arg) do
+      child_spec(arg, [restart: :transient])
     end
 
     @impl true

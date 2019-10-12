@@ -5,7 +5,6 @@ defmodule StateServerTest.SwitchWithStatesTest do
   use ExUnit.Case
   import ExUnit.CaptureIO
 
-  @tag :one
   test "SwitchWithStates announces flips" do
     {:ok, srv} = SwitchWithStates.start_link
 

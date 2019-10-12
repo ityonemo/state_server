@@ -1,6 +1,6 @@
 defmodule StateServer.State do
 
-  @state_server_with_states_code File.read!("priv/switch_with_states.exs")
+  @state_server_with_states_code File.read!("example/switch_with_states.exs")
 
   @moduledoc """
   A behaviour that lets you organize code for your `StateServer` states.

@@ -12,6 +12,7 @@ defmodule StateServer.MixProject do
       package: [
         description: "half gen_server, half gen_statem",
         licenses: ["MIT"],
+        files: ~w(lib .formatter.exs mix.exs README* LICENSE* VERSIONS* src examples),
         links: %{"GitHub" => "https://github.com/ityonemo/state_server"}
       ],
       source_url: "https://github.com/ityonemo/state_server/",

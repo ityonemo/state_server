@@ -21,17 +21,33 @@ defmodule StateServerTest.OnStateEntryTest do
     end
 
     @impl true
-    def handle_cast({:goto, new_state}, _state, _data) do
-      {:noreply, goto: new_state}
+    def handle_cast(actions, _state, _data) do
+      {:noreply, actions}
     end
   end
 
   describe "when making state changes" do
     test "a goto passes through on_state_entry with no transition declared." do
       {:ok, srv} = Module.start_link(%{pid: self()})
-      GenServer.cast(srv, {:goto, :end})
+      GenServer.cast(srv, goto: :end)
 
       assert_receive :end_via_goto
+    end
+
+    test "a transition passes through on_state_entry with its transition declared (1)." do
+      {:ok, srv} = Module.start_link(%{pid: self()})
+
+      GenServer.cast(srv, transition: :tr1)
+
+      assert_receive {:end_via_transition, :tr1}
+    end
+
+    test "a transition passes through on_state_entry with its transition declared (2)." do
+      {:ok, srv} = Module.start_link(%{pid: self()})
+
+      GenServer.cast(srv, transition: :tr2)
+
+      assert_receive {:end_via_transition, :tr2}
     end
   end
 end

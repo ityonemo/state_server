@@ -563,9 +563,17 @@ defmodule StateServer do
     {:ok, state, %{data_wrap | data: data},
       {:next_event, :internal, payload}}
   end
+  defp parse_init({:ok, data, timeout: {name, payload, time}}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {{:timeout, name}, time, payload}}
+  end
   defp parse_init({:ok, data, timeout: {payload, time}}, state, data_wrap) do
     {:ok, state, %{data_wrap | data: data},
       {{:timeout, nil}, time, payload}}
+  end
+  defp parse_init({:ok, data, timeout: time}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {{:timeout, nil}, time, nil}}
   end
   defp parse_init({:ok, data, goto: state}, _, data_wrap) do
     parse_init({:ok, data}, state, data_wrap)
@@ -620,16 +628,16 @@ defmodule StateServer do
         {:keep_state, data, do_event_conversion(actions ++ extra_actions)}
 
       :noreply ->
-        {:next_state, next_state, data, do_event_conversion(actions)}
+        do_on_entry({:next_state, next_state, data, do_event_conversion(actions)}, tr, state, data)
 
       {:noreply, extra_actions} ->
-        {:next_state, next_state, data, do_event_conversion(actions ++ extra_actions)}
+        do_on_entry({:next_state, next_state, data, do_event_conversion(actions ++ extra_actions)}, tr, state, data)
     end
   end
 
 
-  defp do_on_entry({:next_state, state, new_data, actions1}, _old_state, data) do
-    case data.on_state_entry.(state, nil, new_data.data) do
+  defp do_on_entry({:next_state, state, new_data, actions1}, tr, _old_state, data) do
+    case data.on_state_entry.(state, tr, new_data.data) do
       {:noreply, [{:update, newer_data} | actions2]} ->
         {:next_state, state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
       {:noreply, [actions2]} ->
@@ -638,8 +646,8 @@ defmodule StateServer do
         {:next_state, state, new_data, actions1}
     end
   end
-  defp do_on_entry({:next_state, state, new_data}, _old_state, data) do
-    case data.on_state_entry.(state, nil, new_data.data) do
+  defp do_on_entry({:next_state, state, new_data}, tr, _old_state, data) do
+    case data.on_state_entry.(state, tr, new_data.data) do
       {:noreply, [{:update, newer_data} | actions]} ->
         {:next_state, state, %{data | data: newer_data}, do_event_conversion(actions)}
       {:noreply, [actions]} ->
@@ -648,8 +656,8 @@ defmodule StateServer do
         {:next_state, state, new_data}
     end
   end
-  defp do_on_entry({:repeat_state, new_data, actions1}, state, data) do
-    case data.on_state_entry.(state, nil, new_data.data) do
+  defp do_on_entry({:repeat_state, new_data, actions1}, tr, state, data) do
+    case data.on_state_entry.(state, tr, new_data.data) do
       {:noreply, [{:update, newer_data} | actions2]} ->
         {:repeat_state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
       {:noreply, [actions2]} ->
@@ -658,8 +666,8 @@ defmodule StateServer do
         {:repeat_state, new_data, actions1}
     end
   end
-  defp do_on_entry({:repeat_state, new_data}, state, data) do
-    case data.on_state_entry.(state, nil, new_data.data) do
+  defp do_on_entry({:repeat_state, new_data}, tr, state, data) do
+    case data.on_state_entry.(state, tr, new_data.data) do
       {:noreply, [{:update, newer_data} | actions]} ->
         {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
       {:noreply, [actions]} ->
@@ -668,8 +676,8 @@ defmodule StateServer do
         {:repeat_state, new_data}
     end
   end
-  defp do_on_entry(:repeat_state, state, data) do
-    case data.on_state_entry.(state, nil, data.data) do
+  defp do_on_entry(:repeat_state, tr, state, data) do
+    case data.on_state_entry.(state, tr, data.data) do
       {:noreply, [{:update, newer_data} | actions]} ->
         {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
       {:noreply, [actions]} ->
@@ -678,7 +686,7 @@ defmodule StateServer do
         {:repeat_state, data}
     end
   end
-  defp do_on_entry(any, _, _), do: any
+  defp do_on_entry(any, _, _, _), do: any
 
   defp do_reply_translation(msg, from, state, data) do
     case msg do
@@ -701,7 +709,7 @@ defmodule StateServer do
           [{:reply, from, reply} | do_event_conversion(actions)]}
 
       other_msg ->
-        do_on_entry(other_msg, state, data)
+        do_on_entry(other_msg, nil, state, data)
     end
   end
 
@@ -722,7 +730,7 @@ defmodule StateServer do
         {:keep_state_and_data, do_event_conversion(actions)}
 
       other_msg ->
-        do_on_entry(other_msg, state, data)
+        do_on_entry(other_msg, nil, state, data)
     end
   end
 
@@ -754,7 +762,7 @@ defmodule StateServer do
     unless Keyword.has_key?(module.__state_graph__, state) do
       raise InvalidStateError, "#{state} not in states for #{module}"
     end
-    do_on_entry({:next_state, state, data}, old_state, data)
+    do_on_entry({:next_state, state, data}, nil, old_state, data)
   end
   def handle_event(:internal, {:"$update", new_data}, _state, data) do
     {:keep_state, %{data | data: new_data}, []}

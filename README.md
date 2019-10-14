@@ -1,32 +1,47 @@
 # StateServer
 
-**Opinionated :gen_statem shim for Elixir**
+## Opinionated :gen_statem shim for Elixir
+
+> A foolish consistency is the hobgoblin of little minds,
+> adored by little statemen and philosophers and divines.
+> With consistency a great soul has simply nothing to do.
+>
+> -- Ralph Waldo Emerson
+
+The unusual callback pattern of `:gen_statem` exists to allow code
+organization which we have better ways of achieving in Elixir (versus
+erlang).  On the other hand we want to make sure users are using the
+canonical `:gen_statem` to leverage and prove out its battle-testedness
+
+This library makes `:gen_statem` more consistent with how Elixir
+architects its `GenServer`s.
 
 There are three major objectives:
-  -  Fanout the callback handling
-  -  Unify callback return type with that of `GenServer`, and sanitize
-  -  Enforce the use of a programmer-defined state graph.
+
+- Fanout the callback handling
+- Unify callback return type with that of `GenServer`, and sanitize
+- Enforce the use of a programmer-defined state graph.
 
 ## Installation
 
-The package can be installed by adding `state_server` to your list of dependencies 
+The package can be installed by adding `state_server` to your list of dependencies
 in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:state_server, "~> 0.1.0"}
+    {:state_server, "~> 0.2.1"}
   ]
 end
 ```
 
 The docs can be found at [https://hexdocs.pm/state_server](https://hexdocs.pm/state_server).
 
-### Example
+## Example
 
 ```elixir
 defmodule Demo do
-  use StateServer, on: [flip: :off], 
+  use StateServer, on: [flip: :off],
                    off: [flip: :on]
 
   def start_link(_), do: StateServer.start_link(__MODULE__, [], name: Demo)

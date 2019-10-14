@@ -1,11 +1,10 @@
-Code.require_file("priv/switch_with_states.exs")
+Code.require_file("example/switch_with_states.exs")
 
 defmodule StateServerTest.SwitchWithStatesTest do
 
   use ExUnit.Case
   import ExUnit.CaptureIO
 
-  @tag :one
   test "SwitchWithStates announces flips" do
     {:ok, srv} = SwitchWithStates.start_link
 

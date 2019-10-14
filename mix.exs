@@ -4,7 +4,7 @@ defmodule StateServer.MixProject do
   def project do
     [
       app: :state_server,
-      version: "0.2.0",
+      version: "0.3.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -12,6 +12,7 @@ defmodule StateServer.MixProject do
       package: [
         description: "half gen_server, half gen_statem",
         licenses: ["MIT"],
+        files: ~w(lib .formatter.exs mix.exs README* LICENSE* VERSIONS* src examples),
         links: %{"GitHub" => "https://github.com/ityonemo/state_server"}
       ],
       source_url: "https://github.com/ityonemo/state_server/",

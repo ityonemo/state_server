@@ -23,7 +23,7 @@ defmodule StateServerTest.Callbacks.HandleTimeoutBasicTest do
       {:reply, "foo", [timeout: {:bar, time}]}
     end
     def handle_call({:named_timeout, payload, time}, _from, _state, _data) do
-      {:reply, "foo", [timeout: {{:bar, payload}, time}]}
+      {:reply, "foo", [timeout: {:bar, payload, time}]}
     end
     def handle_call(:unnamed_timeout, _from, _state, _data) do
       {:reply, "foo", [timeout: 10]}
@@ -64,6 +64,59 @@ defmodule StateServerTest.Callbacks.HandleTimeoutBasicTest do
       assert {:start, "bar"} == Instrumented.state(srv)
     end
   end
+
+
+  describe "instrumenting handle_timeout and triggering with timeout and no payload" do
+    test "works with static/update" do
+      test_pid = self()
+
+      {:ok, srv} = Instrumented.start_link(fn value ->
+        send(test_pid, {:foo, value})
+        {:noreply, update: "bar"}
+      end)
+
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = Instrumented.named_timeout(srv)
+      assert_receive {:foo, :bar}
+      assert {:start, "bar"} = Instrumented.state(srv)
+    end
+
+    test "works with transition/idempotent" do
+      test_pid = self()
+
+      {:ok, srv} = Instrumented.start_link(fn value ->
+        send(test_pid, {:foo, value})
+        {:noreply, transition: :tr}
+      end)
+
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = Instrumented.named_timeout(srv)
+      assert_receive {:foo, :bar}
+      assert {:end, ^f} = Instrumented.state(srv)
+    end
+
+    test "works with delayed transition/idempotent" do
+      test_pid = self()
+
+      {:ok, srv} = Instrumented.start_link(fn value ->
+        send(test_pid, {:foo, value})
+        {:noreply, transition: :tr}
+      end)
+
+      assert {:start, f} = Instrumented.state(srv)
+      assert "foo" = Instrumented.named_timeout(srv, 10)
+
+      # calls don't interrupt the named timeout
+      Process.sleep(5)
+      assert {:start, ^f} = Instrumented.state(srv)
+      Process.sleep(10)
+      assert {:end, ^f} = Instrumented.state(srv)
+
+      # let's be sure that we have gotten the expected response
+      assert_receive {:foo, :bar}
+    end
+  end
+
 
   describe "instrumenting handle_timeout and triggering with timeout and payload" do
     test "works with static/update" do

@@ -956,6 +956,23 @@ defmodule StateServer do
   ###############################################################################
   ## State modules
 
+  @doc """
+  Defines a state module to organize your code internally.
+
+  Keep in mind that the arities of all of the callbacks are less one since
+  the associated state is bound in the parent module.
+
+  Example:
+
+  ```elixir
+  defstate On, for: :on do
+    @impl true
+    def handle_call(_, _, _) do
+      ...
+    end
+  end
+  ```
+  """
   defmacro defstate(module_ast = {:__aliases__, _, [module_alias]}, [for: state], code) do
     module_name = Module.concat(__CALLER__.module, module_alias)
     code! = inject_behaviour(code)
@@ -965,6 +982,15 @@ defmodule StateServer do
     end
   end
 
+  @doc """
+  Like `defstate/3` but lets you define your module externally.
+
+  Example:
+
+  ```elixir
+  defstate Some.Other.Module, for: :on
+  ```
+  """
   defmacro defstate({:__aliases__, _, [module_alias]}, [for: state]) do
     module_name = Module.concat(:Elixir, module_alias)
     quote do
@@ -1041,6 +1067,20 @@ defmodule StateServer do
     end
   end
 
+  @doc """
+  a shortcut which lets you trap all other cases and send them to be
+  handled by individual state modules.
+
+  ```elixir
+  defer handle_call
+  ```
+
+  is equivalent to
+
+  ```elixir
+  def handle_call(_, _, _, _), do: :defer
+  ```
+  """
   defmacro defer({:handle_call, _, _}) do
     quote do
       def handle_call(_, _, _, _), do: :defer

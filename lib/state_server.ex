@@ -53,6 +53,13 @@ defmodule StateServer do
   - `state` which is a union type of all state atoms.
   - `transition` which is a union type of all transition atoms.
 
+  The following module attributes are available at compile-time:
+  - `@state_graph` is the state graph as passed in the `use` statement
+  - `@initial_state` is the initial state of the state graph.  Note that
+    there are cases when the StateServer itself should not start in that
+    state, for example if it is being restarted by an OTP supervisor and
+    should search for its state from some other source of ground truth.
+
   ## State machine data
 
   A `StateServer`, like all `:gen_statem`s carry additional data of any term
@@ -370,9 +377,15 @@ defmodule StateServer do
     :noreply | {:noreply, [on_state_entry_event]}
 
   @doc """
-  triggered just prior to entering a state; If entering a state is done with
-  a `:goto` statement or a `:gen_statem` state change, `transition` will be
-  `nil`.
+  triggered just prior to entering a state.
+
+  #### Warning: this behavior may change in the future
+  Will **not** be called on init.  You should have your own state entry
+  logic for that situation.
+  #### End warning
+
+  If entering a state is done with a `:goto` statement or a `:gen_statem`
+  state change, `transition` will be `nil`.
 
   Note that at this point the state change should not be cancelled.  If you
   need to cancel a transition, use `c:handle_transition/3` with the `:cancel`

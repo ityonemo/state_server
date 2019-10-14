@@ -40,6 +40,10 @@
 
 - does child_spec/1 correctly (OTP is hard!)
 
+## 0.3.0
+
+- support for on_state_entry/3
+
 ### Unscheduled
 
 - better compatibility with gen_statem modules by providing `handle_event/3`

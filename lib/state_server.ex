@@ -373,6 +373,8 @@ defmodule StateServer do
     {:event_timeout, {term, non_neg_integer}} | {:event_timeout, non_neg_integer} |
     {:state_timeout, {term, non_neg_integer}} | {:state_timeout, non_neg_integer} |
     {:timeout, {term, non_neg_integer}} | {:timeout, non_neg_integer}
+
+  @typedoc false
   @type on_state_entry_response ::
     :noreply | {:noreply, [on_state_entry_event]}
 

@@ -49,7 +49,7 @@ defmodule StateServer.State do
 
   ### Precedence and Defer statements
 
-  Note that `handle_*` functions written directly in the body of the `StateServer`
+  Note that `handle_\*` functions written directly in the body of the `StateServer`
   take precedence over any functions written as a part of a state module.  In the
   case where there are competing function calls, your handler functions written
   *in the body* of the `StateServer` may emit `:defer` as a result, which will punt
@@ -113,8 +113,10 @@ defmodule StateServer.State do
   @callback handle_internal(term, term) :: noreply_response | stop_response
   @callback handle_timeout(term, term) :: noreply_response | stop_response
   @callback handle_transition(atom, term) :: noreply_response | stop_response | :cancel
+  @callback on_state_entry(atom, term) :: StateServer.on_state_entry_response
 
   @optional_callbacks [handle_call: 3, handle_cast: 2, handle_continue: 2,
-    handle_info: 2, handle_internal: 2, handle_timeout: 2, handle_transition: 2]
+    handle_info: 2, handle_internal: 2, handle_timeout: 2, handle_transition: 2,
+    on_state_entry: 2]
 
 end

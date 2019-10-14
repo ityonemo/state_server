@@ -11,11 +11,11 @@ defmodule StateServerTest.OnStateEntryTest do
     def init(data), do: {:ok, data}
 
     @impl true
-    def on_state_entry(:end, nil, %{pid: pid}) do
+    def on_state_entry(nil, :end, %{pid: pid}) do
       send(pid, :end_via_goto)
       :noreply
     end
-    def on_state_entry(:end, trans, %{pid: pid}) do
+    def on_state_entry(trans, :end, %{pid: pid}) do
       send(pid, {:end_via_transition, trans})
       :noreply
     end

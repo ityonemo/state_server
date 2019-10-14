@@ -5,7 +5,6 @@ defmodule StateServer.MixProject do
     [
       app: :state_server,
       version: "0.3.0",
-      version: "0.2.2",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

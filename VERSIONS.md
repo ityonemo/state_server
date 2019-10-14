@@ -36,6 +36,10 @@
 
 - better support for named timeouts
 
+## 0.2.2
+
+- does child_spec/1 correctly (OTP is hard!)
+
 ## 0.3.0
 
 - support for on_state_entry/3

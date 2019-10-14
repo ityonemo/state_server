@@ -509,16 +509,25 @@ defmodule StateServer do
         StateGraph.transition(@state_graph, state, transition)
       end
 
-      # provide a default child_spec argument
-      def child_spec(init_arg, overrides \\ []) do
-        default = %{
+      # provides a way for you to make your own overrideable
+      # child_specs.
+      @doc false
+      def child_spec(init_arg, overrides) do
+        Supervisor.child_spec(%{
+          id: __MODULE__,
+          start: {__MODULE__, :start_link, [init_arg]}
+        }, overrides)
+      end
+
+      # provide an overridable default child_spec implementation.
+      @doc false
+      def child_spec(init_arg) do
+        %{
           id: __MODULE__,
           start: {__MODULE__, :start_link, [init_arg]}
         }
-        Supervisor.child_spec(default, overrides)
       end
-
-      defoverridable child_spec: 2
+      defoverridable child_spec: 1
 
       # keep track of __body_modules__
       Module.register_attribute(__MODULE__, :__body_modules__, accumulate: true)

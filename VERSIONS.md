@@ -44,6 +44,10 @@
 
 - support for on_state_entry/3
 
+## 0.3.1
+
+- fixed defstate/2
+
 ### Unscheduled
 
 - better compatibility with gen_statem modules by providing `handle_event/3`

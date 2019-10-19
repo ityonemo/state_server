@@ -1015,8 +1015,8 @@ defmodule StateServer do
   defstate Some.Other.Module, for: :on
   ```
   """
-  defmacro defstate({:__aliases__, _, [module_alias]}, [for: state]) do
-    module_name = Module.concat(:Elixir, module_alias)
+  defmacro defstate(module, [for: state]) do
+    module_name = Macro.expand(module, __CALLER__)
     quote do
       @__body_modules__ {unquote(state), unquote(module_name)}
     end

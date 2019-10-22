@@ -695,7 +695,7 @@ defmodule StateServer do
     |> case do
       {:noreply, [{:update, newer_data} | actions]} ->
         {:next_state, state, %{data | data: newer_data}, do_event_conversion(actions)}
-      {:noreply, [actions]} ->
+      {:noreply, actions} ->
         {:next_state, state, new_data, do_event_conversion(actions)}
       :noreply ->
         {:next_state, state, new_data}
@@ -708,7 +708,7 @@ defmodule StateServer do
     |> case do
       {:noreply, [{:update, newer_data} | actions2]} ->
         {:repeat_state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
-      {:noreply, [actions2]} ->
+      {:noreply, actions2} ->
         {:repeat_state, new_data, actions1 ++ do_event_conversion(actions2)}
       :noreply ->
         {:repeat_state, new_data, actions1}
@@ -721,7 +721,7 @@ defmodule StateServer do
     |> case do
       {:noreply, [{:update, newer_data} | actions]} ->
         {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
-      {:noreply, [actions]} ->
+      {:noreply, actions} ->
         {:repeat_state, new_data, do_event_conversion(actions)}
       :noreply ->
         {:repeat_state, new_data}
@@ -734,7 +734,7 @@ defmodule StateServer do
     |> case do
       {:noreply, [{:update, newer_data} | actions]} ->
         {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
-      {:noreply, [actions]} ->
+      {:noreply, actions} ->
         {:repeat_state, data, do_event_conversion(actions)}
       :noreply ->
         {:repeat_state, data}

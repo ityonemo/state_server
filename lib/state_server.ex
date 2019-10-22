@@ -186,7 +186,8 @@ defmodule StateServer do
     be the last term in the event list, otherwise the succeeding internal
     event will cancel the timeout.
   - `:state_timeout`.  These are cancelled when the state of the state machine
-    changes.
+    changes.  **NB** a state machine may only have one state timeout active
+    at any given time.
   - `:timeout`.  These are not cancelled, unless you reset their value to
     `:infinity`.
 

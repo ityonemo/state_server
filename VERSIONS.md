@@ -52,6 +52,10 @@
 
 - fixed translation of on_entry action clauses
 
+## 0.3.3
+
+- added documentation on the uniqueness of `state_timeout`s
+
 ### Unscheduled
 
 - better compatibility with gen_statem modules by providing `handle_event/3`

@@ -48,6 +48,10 @@
 
 - fixed defstate/2
 
+## 0.3.2
+
+- fixed translation of on_entry action clauses
+
 ### Unscheduled
 
 - better compatibility with gen_statem modules by providing `handle_event/3`

@@ -682,7 +682,7 @@ defmodule StateServer do
     |> case do
       {:noreply, [{:update, newer_data} | actions2]} ->
         {:next_state, state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
-      {:noreply, [actions2]} ->
+      {:noreply, actions2} ->
         {:next_state, state, new_data, actions1 ++ do_event_conversion(actions2)}
       :noreply ->
         {:next_state, state, new_data, actions1}

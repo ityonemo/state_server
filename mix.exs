@@ -4,7 +4,7 @@ defmodule StateServer.MixProject do
   def project do
     [
       app: :state_server,
-      version: "0.3.3",
+      version: "0.4.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -34,7 +34,7 @@ defmodule StateServer.MixProject do
   defp deps do
     [
       {:credo, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.21.1", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.21.2", only: :dev, runtime: false},
       {:excoveralls, "~> 0.11", only: [:dev, :test]},
       {:dialyxir, "~> 0.5", only: :dev, runtime: false}
     ]

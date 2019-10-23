@@ -114,6 +114,23 @@ defmodule StateServer.StateGraph do
   def transitions(stategraph, state), do: Keyword.keys(stategraph[state])
 
   @doc """
+  lists all state/transition pairs. Used to generate the `c:StateServer.is_transition/2` guard.
+
+  ### Example
+  ```elixir
+  iex> StateServer.StateGraph.all_transitions([start: [t1: :state1, t2: :state2], state1: [], state2: [t2: :state1]])
+  [start: :t1, start: :t2, state2: :t2]
+  ```
+  """
+  @spec all_transitions(t) :: keyword
+  def all_transitions(stategraph) do
+    stategraph
+    |> Enum.flat_map(fn
+      {st, trs} -> Enum.map(trs, fn {tr, _dest} -> {st, tr} end)
+    end)
+  end
+
+  @doc """
   outputs the destination state given a source state and a transition.
 
   ### Example
@@ -147,7 +164,7 @@ defmodule StateServer.StateGraph do
   end
 
   @doc """
-  outputs a list of edges of the graph.  Used to generate the `c:StateServer.is_edge/3` guard.
+  outputs a list of edges of the graph.  Used to generate the `c:StateServer.is_transition/3` guard.
 
   ```elixir
   iex> StateServer.StateGraph.edges(start: [t1: :state1, t2: :state2], state1: [t3: :start], state2: [])
@@ -169,7 +186,7 @@ defmodule StateServer.StateGraph do
 
   @doc """
   outputs a list of terminal {state, transition} tuples of the graph.  Used to generate the
-  `c:StateServer.is_terminal_transition/2` guard.
+  `c:StateServer.is_terminal/2` guard.
 
   ```elixir
   iex> StateServer.StateGraph.terminal_transitions(start: [t1: :state1, t2: :state2], state1: [], state2: [])

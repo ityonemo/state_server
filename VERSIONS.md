@@ -52,11 +52,14 @@
 
 - fixed translation of on_entry action clauses
 
-## 0.3.3
+## 0.4.0
 
 - added documentation on the uniqueness of `state_timeout`s
+- fixed compilation concurrency issue by `requiring` all external state modules.
+- renamed from `is_edge/3` to `is_transition/3` and added `is_transition/2`.
+- renamed `is_terminal_transition/2` to `is_terminal/2`.
 
 ### Unscheduled
 
+- `on_data_update/4` special callback.
 - better compatibility with gen_statem modules by providing `handle_event/3`
-- implementation of timeout cancellation

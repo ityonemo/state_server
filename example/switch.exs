@@ -89,7 +89,7 @@ defmodule Switch do
   # to conserve energy.
   @impl true
   def handle_transition(state, transition, _count)
-    when is_edge(state, transition, :on) do
+    when is_transition(state, transition, :on) do
     {:noreply, state_timeout: {:conserve, 300}}
   end
   def handle_transition(_, _, _), do: :noreply

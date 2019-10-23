@@ -119,7 +119,7 @@ defmodule StateServer do
 
   ### Special callbacks
 
-  - `c:on_state_entry` will be triggered when any event causes the state machine to
+  - `c:on_state_entry/3` will be triggered when any event causes the state machine to
     change state or repeat state.
 
   ## Callback responses

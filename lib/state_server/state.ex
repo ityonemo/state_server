@@ -104,7 +104,11 @@ defmodule StateServer.State do
   ```
 
   Will result in the event stream `common_events ++ start_events` emitted
-  when `{:query, payload}` is called to the state server.
+  when `{:query, payload}` is called to the state server.  Note that if
+  your common events contain a mutation of the stateserver data, or a state
+  change, these events will be prepended to the events list but will
+  not be reflected in the passed parameters to the deferred state server
+  call.
 
   ## Example
 

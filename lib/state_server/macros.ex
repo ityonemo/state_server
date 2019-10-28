@@ -64,6 +64,16 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
+        {:defer, events} ->
+          if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
+            unquote(data).module.__handle_call_shim__(unquote(payload),
+                                                      unquote(from),
+                                                      unquote(state),
+                                                      unquote(data).data)
+            |> StateServer.Macros.prepend_events(events)
+          else
+            unquote(default_handler_code)
+          end
         any -> any
       end
     end
@@ -86,6 +96,13 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
+        {:defer, events} ->
+          if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
+            unquote(data).module.unquote(shim_fn)(unquote(payload), unquote(state), unquote(data).data)
+            |> StateServer.Macros.prepend_events(events)
+          else
+            unquote(default_handler_code)
+          end
         any -> any
       end
     end
@@ -95,5 +112,10 @@ defmodule StateServer.Macros do
   def state_shim_for(fun) do
     String.to_atom("__" <> Atom.to_string(fun) <> "_shim__")
   end
+
+  def prepend_events({:reply, term}, events), do: {:reply, term, events}
+  def prepend_events({:reply, term, called_events}, events), do: {:reply, term, events ++ called_events}
+  def prepend_events(:noreply, events), do: {:noreply, events}
+  def prepend_events({:noreply, called_events}, events), do: {:noreply, events ++ called_events}
 
 end

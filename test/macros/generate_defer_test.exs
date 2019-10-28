@@ -7,22 +7,41 @@ defmodule StateServerTest.Macros.GenerateDeferTest do
     assert (~S"""
     foo |> case do
       :defer ->
-        if(function_exported?(data.module(), :__handle_call_shim__, 4)) do
-          data.module().__handle_call_shim__(payload, from, state, data.data())
+        if function_exported?(data.module, :__handle_call_shim__, 4) do
+          data.module.__handle_call_shim__(payload, from, state, data.data)
         else
-          proc = case(Process.info(self(), :registered_name)) do
+          proc = case Process.info(self(), :registered_name) do
             {_, []} ->
               self()
             {_, name} ->
               name
           end
-          case(:erlang.phash2(1, 1)) do
+          case :erlang.phash2(1, 1) do
             0 ->
               raise("attempted to call handle_call/4 for StateServer " <> inspect(proc) <> " but no handle_call/4 clause was provided")
             1 ->
               {:stop, {:EXIT, "call error"}}
           end
         end
+        {:defer, events} ->
+          if function_exported?(data.module, :__handle_call_shim__, 4) do
+            data.module.__handle_call_shim__(payload, from, state, data.data)
+            |> StateServer.Macros.prepend_events(events)
+          else
+            proc = case Process.info(self(), :registered_name) do
+              {_, []} ->
+                self()
+              {_, name} ->
+                name
+            end
+            case :erlang.phash2(1, 1) do
+              0 ->
+                raise("attempted to call handle_call/4 for StateServer " <>
+                      inspect(proc) <> " but no handle_call/4 clause was provided")
+              1 ->
+                {:stop, {:EXIT, "call error"}}
+            end
+          end
       any ->
         any
     end
@@ -41,25 +60,45 @@ defmodule StateServerTest.Macros.GenerateDeferTest do
     assert (~S"""
     foo |> case do
       :defer ->
-        if(function_exported?(data.module(), :__handle_foo_shim__, 3)) do
-          data.module().__handle_foo_shim__(payload, state, data.data())
+        if function_exported?(data.module, :__handle_foo_shim__, 3) do
+          data.module.__handle_foo_shim__(payload, state, data.data)
         else
-          proc = case(Process.info(self(), :registered_name)) do
+          proc = case Process.info(self(), :registered_name) do
             {_, []} ->
               self()
             {_, name} ->
               name
           end
-          case(:erlang.phash2(1, 1)) do
+          case :erlang.phash2(1, 1) do
             0 ->
-              raise("attempted to call handle_foo/3 for StateServer " <> inspect(proc) <> " but no handle_foo/3 clause was provided")
+              raise("attempted to call handle_foo/3 for StateServer " <>
+                     inspect(proc) <> " but no handle_foo/3 clause was provided")
+            1 ->
+              {:stop, {:EXIT, "call error"}}
+          end
+        end
+      {:defer, events} ->
+        if function_exported?(data.module, :__handle_foo_shim__, 3) do
+          data.module.__handle_foo_shim__(payload, state, data.data)
+          |> StateServer.Macros.prepend_events(events)
+        else
+          proc = case Process.info(self(), :registered_name) do
+            {_, []} ->
+              self()
+            {_, name} ->
+              name
+          end
+          case :erlang.phash2(1, 1) do
+            0 ->
+              raise("attempted to call handle_foo/3 for StateServer " <>
+                    inspect(proc) <> " but no handle_foo/3 clause was provided")
             1 ->
               {:stop, {:EXIT, "call error"}}
           end
         end
       any ->
         any
-    end
+      end
     """
     |> Code.string_to_quoted!
     |> Macro.to_string) == (

@@ -59,7 +59,11 @@
 - renamed from `is_edge/3` to `is_transition/3` and added `is_transition/2`.
 - renamed `is_terminal_transition/2` to `is_terminal/2`.
 
+## 0.4.1
+
+- added capability to add events to the `:defer` directive.
+
 ### Unscheduled
 
-- `on_data_update/4` special callback.
+- `on_data_update/4` special callback
 - better compatibility with gen_statem modules by providing `handle_event/3`

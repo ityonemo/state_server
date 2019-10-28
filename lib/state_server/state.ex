@@ -70,7 +70,7 @@ defmodule StateServer.State do
   ```
 
   since this is a common pattern, we provide a `defer` macro which is equivalent
-  to the above.
+  to the above:
 
   ```elixir
   # make sure query calls happen regardless of state
@@ -81,8 +81,30 @@ defmodule StateServer.State do
   defer handle_call
   ```
 
-  You do not need this pattern for event handlers which are not implemented in
-  the body of the function.
+  #### Defer with common events
+
+  If you would like to perform analysis on the inbound data, generating events
+  *and* defer to the individual states for further state-specific event
+  processing, you may do so with the `{:defer, events}` result type.  For
+  example, the following code:
+
+  ```elixir
+  # perform some common processing
+  def handle_call({:query, payload}, _from, _state, data) do
+    common_events = generate_common_events_from(payload)
+    {:defer, common_events}
+  end
+
+  defstate Start, for: :start do
+    def handle_call({:query, payload}, _from, data) do
+      # ...some code here...
+      {:reply, result, start_events}
+    end
+  end
+  ```
+
+  Will result in the event stream `common_events ++ start_events` emitted
+  when `{:query, payload}` is called to the state server.
 
   ## Example
 

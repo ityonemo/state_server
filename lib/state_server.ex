@@ -241,10 +241,13 @@ defmodule StateServer do
   @type from :: {pid, tag :: term}
 
   @typedoc "handler output when there's a response"
-  @type reply_response :: {:reply, term, [event]}
+  @type reply_response :: {:reply, term, [event]} | {:reply, term}
 
   @typedoc "handler output when there isn't a response"
-  @type noreply_response :: {:noreply, [event]}
+  @type noreply_response :: {:noreply, [event]} | :noreply
+
+  @typedoc "handler output when you want to defer to a state module"
+  @type defer_response :: {:defer, [event]} | :defer
 
   @typedoc "handler output when the state machine should stop altogether"
   @type stop_response ::
@@ -320,25 +323,25 @@ defmodule StateServer do
   handles messages sent to the StateMachine using `StateServer.call/3`
   """
   @callback handle_call(term, from, state :: atom, data :: term) ::
-    reply_response | noreply_response | stop_response | :defer
+    reply_response | noreply_response | stop_response | defer_response
 
   @doc """
   handles messages sent to the StateMachine using `StateServer.cast/2`
   """
   @callback handle_cast(term, state :: atom, data :: term) ::
-    noreply_response | stop_response | :defer
+    noreply_response | stop_response | defer_response
 
   @doc """
   handles messages sent by `send/2` or other system message generators.
   """
   @callback handle_info(term, state :: atom, data :: term) ::
-    noreply_response | stop_response | :defer
+    noreply_response | stop_response | defer_response
 
   @doc """
   handles events sent by the `{:internal, payload}` event response.
   """
   @callback handle_internal(term, state :: atom, data :: term) ::
-    noreply_response | stop_response | :defer
+    noreply_response | stop_response | defer_response
 
   @doc """
   handles events sent by the `{:continue, payload}` event response.
@@ -347,13 +350,13 @@ defmodule StateServer do
   tag attached.
   """
   @callback handle_continue(term, state :: atom, data :: term) ::
-    noreply_response | stop_response | :defer
+    noreply_response | stop_response | defer_response
 
   @doc """
   triggered when a set timeout event has timed out.  See [timeouts](#module-timeouts)
   """
   @callback handle_timeout(payload::timeout_payload, state :: atom, data :: term) ::
-    noreply_response | stop_response | :defer
+    noreply_response | stop_response | defer_response
 
   @doc """
   triggered when a state change has been initiated via a `{:transition, transition}`
@@ -367,7 +370,7 @@ defmodule StateServer do
   callback defguards here.
   """
   @callback handle_transition(state :: atom, transition :: atom, data :: term) ::
-    noreply_response | stop_response | :defer | :cancel
+    noreply_response | stop_response | defer_response | :cancel
 
   @typedoc """
   on_state_entry function outputs

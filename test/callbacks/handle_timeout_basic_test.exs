@@ -65,7 +65,6 @@ defmodule StateServerTest.Callbacks.HandleTimeoutBasicTest do
     end
   end
 
-
   describe "instrumenting handle_timeout and triggering with timeout and no payload" do
     test "works with static/update" do
       test_pid = self()
@@ -116,7 +115,6 @@ defmodule StateServerTest.Callbacks.HandleTimeoutBasicTest do
       assert_receive {:foo, :bar}
     end
   end
-
 
   describe "instrumenting handle_timeout and triggering with timeout and payload" do
     test "works with static/update" do

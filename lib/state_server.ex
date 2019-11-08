@@ -640,6 +640,22 @@ defmodule StateServer do
     {:ok, state, %{data_wrap | data: data},
       {{:timeout, nil}, time, nil}}
   end
+  defp parse_init({:ok, data, event_timeout: {payload, time}}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:timeout, time, {:"$event_timeout", payload}}}
+  end
+  defp parse_init({:ok, data, event_timeout: time}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:timeout, time, nil}}
+  end
+  defp parse_init({:ok, data, state_timeout: {payload, time}}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:state_timeout, time, payload}}
+  end
+  defp parse_init({:ok, data, state_timeout: time}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:state_timeout, time, nil}}
+  end
   defp parse_init({:ok, data, goto: state}, _, data_wrap) do
     parse_init({:ok, data}, state, data_wrap)
   end

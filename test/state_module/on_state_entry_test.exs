@@ -13,6 +13,10 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
     @impl true
     def handle_call(action, _from, _state, _data), do: {:reply, :ok, action}
 
+    @impl true
+    def on_state_entry(_, :start, _), do: :noreply
+    defer on_state_entry
+
     defstate End, for: :end do
       @impl true
       def on_state_entry(trans, resp_pid) do
@@ -53,6 +57,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       send(data, :outer_handler)
       :noreply
     end
+    def on_state_entry(_, :start, _), do: :noreply
     defer on_state_entry
 
     defstate End, for: :end do

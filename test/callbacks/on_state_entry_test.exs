@@ -19,6 +19,7 @@ defmodule StateServerTest.OnStateEntryTest do
       send(pid, {:end_via_transition, trans})
       :noreply
     end
+    def on_state_entry(_, _, _), do: :noreply
 
     @impl true
     def handle_cast(actions, _state, _data) do
@@ -48,6 +49,40 @@ defmodule StateServerTest.OnStateEntryTest do
       GenServer.cast(srv, transition: :tr2)
 
       assert_receive {:end_via_transition, :tr2}
+    end
+  end
+
+  defmodule EntryModule do
+    use StateServer, start: [], unreachable: []
+
+    def start_link(data), do: StateServer.start_link(__MODULE__, data)
+
+    @impl true
+    def init(data = %{goto: where}), do: {:ok, data, goto: where}
+    def init(data), do: {:ok, data}
+
+    @impl true
+    def on_state_entry(tr, who, %{pid: pid}) do
+      send(pid, {:entry, tr, who})
+      :noreply
+    end
+
+    @impl true
+    def handle_cast(actions, _state, _data) do
+      {:noreply, actions}
+    end
+  end
+
+  describe "on state_server initialization" do
+    test "on_state_entry is with the starting state and nil as the transition" do
+      EntryModule.start_link(%{pid: self()})
+
+      assert_receive {:entry, nil, :start}
+    end
+
+    test "on_state_entry is called with the goto state" do
+      EntryModule.start_link(%{pid: self(), goto: :unreachable})
+      assert_receive {:entry, nil, :unreachable}
     end
   end
 end

@@ -318,6 +318,11 @@ defmodule StateServer do
     {:ok, initial_data::term, goto: atom, internal: term} |
     {:ok, initial_data::term, goto: atom, continue: term} |
     {:ok, initial_data::term, goto: atom, timeout: {term, timeout}} |
+    {:ok, initial_data::term, goto: atom, timeout: timeout} |
+    {:ok, initial_data::term, goto: atom, state_timeout: {term, timeout}} |
+    {:ok, initial_data::term, goto: atom, state_timeout: timeout} |
+    {:ok, initial_data::term, goto: atom, event_timeout: {term, timeout}} |
+    {:ok, initial_data::term, goto: atom, event_timeout: timeout} |
     :ignore | {:stop, reason :: any}
 
   @doc """

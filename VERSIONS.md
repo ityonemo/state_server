@@ -63,6 +63,10 @@
 
 - added capability to add events to the `:defer` directive.
 
+## 0.4.2
+
+- make `on_state_entry/3` be called on init.
+
 ### Unscheduled
 
 - `on_data_update/4` special callback

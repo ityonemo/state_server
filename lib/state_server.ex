@@ -119,8 +119,9 @@ defmodule StateServer do
 
   ### Special callbacks
 
-  - `c:on_state_entry/3` will be triggered when any event causes the state machine to
-    change state or repeat state.
+  - `c:on_state_entry/3` will be triggered for the starting state (whether as a default or
+    as set by a `goto:` parameter in `c:init/1`), and when any event causes the state machine
+    to change state or repeat state
 
   ## Callback responses
 
@@ -389,12 +390,7 @@ defmodule StateServer do
     :noreply | {:noreply, [on_state_entry_event]}
 
   @doc """
-  triggered just prior to entering a state.
-
-  #### Warning: this behavior may change in the future
-  Will **not** be called on init.  You should have your own state entry
-  logic for that situation.
-  #### End warning
+  triggered on initialization or just prior to entering a state.
 
   If entering a state is done with a `:goto` statement or a `:gen_statem`
   state change, `transition` will be `nil`.

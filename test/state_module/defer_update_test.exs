@@ -52,6 +52,21 @@ defmodule StateServerTest.StateModule.DeferUpdateTest do
       assert_receive :bar
       assert :bar == Instrumentable.data(srv)
     end
+
+    test "in the first position with call/goto, it shows up in the data" do
+      {:ok, srv} = Instrumentable.start_link(:foo)
+      assert :foo == Instrumentable.data(srv)
+      assert :bar == Instrumentable.run_call(srv, {:defer, goto: :start, update: :bar})
+      assert :bar == Instrumentable.data(srv)
+    end
+
+    test "in the first position with cast/goto, it shows up in the data" do
+      {:ok, srv} = Instrumentable.start_link(:foo)
+      assert :foo == Instrumentable.data(srv)
+      Instrumentable.run_cast(srv, {:defer, goto: :start, update: :bar})
+      assert_receive :bar
+      assert :bar == Instrumentable.data(srv)
+    end
   end
 
 end

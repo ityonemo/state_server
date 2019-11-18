@@ -318,6 +318,11 @@ defmodule StateServer do
     {:ok, initial_data::term, goto: atom, internal: term} |
     {:ok, initial_data::term, goto: atom, continue: term} |
     {:ok, initial_data::term, goto: atom, timeout: {term, timeout}} |
+    {:ok, initial_data::term, goto: atom, timeout: timeout} |
+    {:ok, initial_data::term, goto: atom, state_timeout: {term, timeout}} |
+    {:ok, initial_data::term, goto: atom, state_timeout: timeout} |
+    {:ok, initial_data::term, goto: atom, event_timeout: {term, timeout}} |
+    {:ok, initial_data::term, goto: atom, event_timeout: timeout} |
     :ignore | {:stop, reason :: any}
 
   @doc """
@@ -639,6 +644,22 @@ defmodule StateServer do
   defp parse_init({:ok, data, timeout: time}, state, data_wrap) do
     {:ok, state, %{data_wrap | data: data},
       {{:timeout, nil}, time, nil}}
+  end
+  defp parse_init({:ok, data, event_timeout: {payload, time}}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:timeout, time, {:"$event_timeout", payload}}}
+  end
+  defp parse_init({:ok, data, event_timeout: time}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:timeout, time, nil}}
+  end
+  defp parse_init({:ok, data, state_timeout: {payload, time}}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:state_timeout, time, payload}}
+  end
+  defp parse_init({:ok, data, state_timeout: time}, state, data_wrap) do
+    {:ok, state, %{data_wrap | data: data},
+      {:state_timeout, time, nil}}
   end
   defp parse_init({:ok, data, goto: state}, _, data_wrap) do
     parse_init({:ok, data}, state, data_wrap)

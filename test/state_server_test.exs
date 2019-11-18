@@ -142,4 +142,20 @@ defmodule StateServerTest do
     assert :end == StateServer.call(pid, :state)
   end
 
+  test "StateServer started with state_timeout works as expected" do
+    test_pid = self()
+    {:ok, _} = StartupInstrumentable.start_link(fn -> {:ok, test_pid, state_timeout: {:timeout, 200}} end)
+    refute_receive :timeout
+    Process.sleep(200)
+    assert_receive(:timeout)
+  end
+
+  test "StateServer started with event_timeout works as expected" do
+    test_pid = self()
+    {:ok, _} = StartupInstrumentable.start_link(fn -> {:ok, test_pid, event_timeout: {:timeout, 200}} end)
+    refute_receive :timeout
+    Process.sleep(200)
+    assert_receive(:timeout)
+  end
+
 end

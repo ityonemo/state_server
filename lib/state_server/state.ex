@@ -29,7 +29,8 @@ defmodule StateServer.State do
   ```
 
   note that the callback directives defined in this module are identical
-  to those of `StateServer`, except that they are missing the `state` argument.
+  to those of `StateServer`, except that they are missing the `state`
+  argument.
 
   ### External state modules
 
@@ -37,11 +38,11 @@ defmodule StateServer.State do
   one your state machine.  Reasons might include:
 
   - to enable code reuse between state machines
-  - if your codebase is getting too long and you would like to put state modules
-    in different files.
+  - if your codebase is getting too long and you would like to put state
+    modules in different files.
 
-  If you choose to do so, there is a **short form** `defstate` call, which is as
-  follows:
+  If you choose to do so, there is a **short form** `defstate` call, which is
+  as follows:
 
   ```elixir
   defstate ExternalModule, for: :state
@@ -49,11 +50,11 @@ defmodule StateServer.State do
 
   ### Precedence and Defer statements
 
-  Note that `handle_\*` functions written directly in the body of the `StateServer`
-  take precedence over any functions written as a part of a state module.  In the
-  case where there are competing function calls, your handler functions written
-  *in the body* of the `StateServer` may emit `:defer` as a result, which will punt
-  the processing of the event to the state modules.
+  Note that `handle_\*` functions written directly in the body of the
+  `StateServer` take precedence over any functions written as a part of a state
+  module.  In the case where there are competing function calls, your handler
+  functions written *in the body* of the `StateServer` may emit `:defer` as a
+  result, which will punt the processing of the event to the state modules.
 
   ```elixir
   # make sure query calls happen regardless of state
@@ -69,8 +70,8 @@ defmodule StateServer.State do
     def handle_call(...) do...
   ```
 
-  since this is a common pattern, we provide a `defer` macro which is equivalent
-  to the above:
+  since this is a common pattern, we provide a `defer` macro which is
+  equivalent to the above:
 
   ```elixir
   # make sure query calls happen regardless of state
@@ -104,11 +105,13 @@ defmodule StateServer.State do
   ```
 
   Will result in the event stream `common_events ++ start_events` emitted
-  when `{:query, payload}` is called to the state server.  Note that if
-  your common events contain a mutation of the stateserver data, or a state
-  change, these events will be prepended to the events list but will
-  not be reflected in the passed parameters to the deferred state server
-  call.
+  when `{:query, payload}` is called to the state server, with the following
+  exception:
+
+  - If you have an `{:update, <new_data>}` in the first position, or in the
+    second position with a `{:goto, <state>}`, or `{:transition, <state>}`
+    in the first position, the update event will be reflected in the deferred
+    state machine call.
 
   ## Example
 

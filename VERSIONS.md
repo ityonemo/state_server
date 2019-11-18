@@ -71,6 +71,10 @@
 
 - support `state_timeout` and `event_timeout` options on init.
 
+## 0.4.4
+
+- deferred calls are passed the updated state.
+
 ### Unscheduled
 
 - `on_data_update/4` special callback

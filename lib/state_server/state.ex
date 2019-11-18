@@ -108,10 +108,10 @@ defmodule StateServer.State do
   when `{:query, payload}` is called to the state server, with the following
   exception:
 
-  - If you have an `{:update, new_data}` in the first position, or in the
+  - If you have an `{:update, <new_data>}` in the first position, or in the
     second position with a `{:goto, <state>}`, or `{:transition, <state>}`
-    in the first position, the update event will be removed from the list
-    and will be reflected in the deferred state machine call.
+    in the first position, the update event will be reflected in the deferred
+    state machine call.
 
   ## Example
 

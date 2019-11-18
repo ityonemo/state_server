@@ -64,6 +64,16 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
+        {:defer, events = [{:update, new_data} | _]} ->
+          if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
+            unquote(data).module.__handle_call_shim__(unquote(payload),
+                                                      unquote(from),
+                                                      unquote(state),
+                                                      new_data)
+            |> StateServer.Macros.prepend_events(events)
+          else
+            unquote(default_handler_code)
+          end
         {:defer, events} ->
           if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
             unquote(data).module.__handle_call_shim__(unquote(payload),
@@ -93,6 +103,16 @@ defmodule StateServer.Macros do
         :defer ->
           if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
             unquote(data).module.unquote(shim_fn)(unquote(payload), unquote(state), unquote(data).data)
+          else
+            unquote(default_handler_code)
+          end
+        {:defer, events = [{:update, new_state} | _]} ->
+          if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
+            unquote(data).module.unquote(shim_fn)(
+              unquote(payload),
+              unquote(state),
+              new_state)
+            |> StateServer.Macros.prepend_events(events)
           else
             unquote(default_handler_code)
           end

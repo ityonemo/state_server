@@ -75,6 +75,10 @@
 
 - deferred calls are passed the updated state.
 
+## 0.4.5
+
+- default to not using a proxy process for timeout calls (consistent with `GenServer`)
+
 ### Unscheduled
 
 - `on_data_update/4` special callback

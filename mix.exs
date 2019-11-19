@@ -4,13 +4,13 @@ defmodule StateServer.MixProject do
   def project do
     [
       app: :state_server,
-      version: "0.4.4",
+      version: "0.4.5",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
       package: [
-        description: "half gen_server, half gen_statem",
+        description: "half gen_server, half gen_statem, all state machine",
         licenses: ["MIT"],
         files: ~w(lib .formatter.exs mix.exs README* LICENSE* VERSIONS* example),
         links: %{"GitHub" => "https://github.com/ityonemo/state_server"}

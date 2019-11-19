@@ -946,8 +946,19 @@ defmodule StateServer do
   @compile {:inline, call: 3, cast: 2, reply: 2, code_change: 4, format_status: 2}
 
   @spec call(server, any, timeout) :: term
-  @doc "should be identical to `GenServer.call/3`"
-  def call(server, request, timeout \\ 5000), do: :gen_statem.call(server, request, timeout)
+  @doc "
+  should be identical to `GenServer.call/3`
+
+  **NB**: this behavior is consistent with the GenServer call but NOT the
+  `:gen_statem.call/3`, which spawns a proxy process.  StateServer
+  chooses the GenServer call to maintain consistency across developer
+  expectations.  If you need `:gen_statem`-like behavior, you can manually
+  call `:gen_statem.call/3` passing the pid or reference and it should work
+  as expected.
+  "
+  def call(server, request, timeout \\ 5000) do
+    GenServer.call(server, request, timeout)
+  end
 
   @spec cast(server, any) :: :ok
   @doc "should be identical to `GenServer.cast/2`"

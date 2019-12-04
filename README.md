@@ -1,5 +1,7 @@
 # StateServer
 
+![CI result](https://github.com/ityonemo/state_server/workflows/Elixir%20CI/badge.svg)
+
 ## Opinionated :gen_statem shim for Elixir
 
 > A foolish consistency is the hobgoblin of little minds,

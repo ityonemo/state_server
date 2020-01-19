@@ -3,7 +3,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
   use ExUnit.Case, async: true
 
   defmodule StateEntry do
-    use StateServer, [start: [tr: :end], end: []]
+    use StateServer, [start: [tr: :end, tr_foo: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
 
@@ -14,6 +14,16 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
     def handle_call(action, _from, _state, _data), do: {:reply, :ok, action}
 
     @impl true
+    def handle_transition(:start, :tr_foo, pid) do
+      {:noreply, update: {"foo", pid}}
+    end
+    def handle_transition(_, _, _), do: :noreply
+
+    @impl true
+    def on_state_entry(:tr_foo, :end, {"foo", pid}) do
+      send(pid, :foo_verified)
+      :noreply
+    end
     def on_state_entry(_, :start, _), do: :noreply
     defer on_state_entry
 
@@ -38,6 +48,13 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       {:ok, pid} = StateEntry.start_link(self())
       GenServer.call(pid, goto: :end)
       assert_receive {:entry_via, nil}
+    end
+
+    test "it receives state updates" do
+      {:ok, pid} = StateEntry.start_link(self())
+      GenServer.call(pid, transition: :tr_foo)
+      assert_receive {:entry_via, :tr_foo}
+      assert_receive {:foo_verified, nil}
     end
   end
 

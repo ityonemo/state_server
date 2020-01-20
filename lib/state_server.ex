@@ -250,16 +250,21 @@ defmodule StateServer do
   @typedoc "handler output when you want to defer to a state module"
   @type defer_response :: {:defer, [event]} | :defer
 
-  @typedoc "handler output when the state machine should stop altogether"
+  @typedoc """
+  handler output when the state machine should stop altogether.  The value in
+  `new_data` will be transferred as the data segment for `c:terminate/3`, so you
+  may instrument important information there.
+  """
   @type stop_response ::
-    :stop | {:stop, reason :: term} | {:stop, reason :: term, new_data :: term} |
-    {:stop_and_reply,
-      reason :: term,
-      replies :: [:gen_statem.reply_action] | :gen_statem.reply_action} |
-    {:stop_and_reply,
-      reason :: term,
-      replies :: [:gen_statem.reply_action] | :gen_statem.reply_action,
-      new_data :: term}
+    {:stop, reason :: term} | {:stop, reason :: term, new_data :: term}
+
+  @typedoc """
+  handler output for `c:handle_call/4` which performs a stop action with a reply.
+  If you would prefer stopping in an alternate form, you may enlist the help of
+  `reply/2`.
+  """
+  @type stop_reply_response ::
+    {:stop, reason :: term, reply :: term, new_data :: term}
 
   @type timeout_payload :: {name :: atom, payload :: term} | (name :: atom) | (payload :: term)
 
@@ -329,7 +334,7 @@ defmodule StateServer do
   handles messages sent to the StateMachine using `StateServer.call/3`
   """
   @callback handle_call(term, from, state :: atom, data :: term) ::
-    reply_response | noreply_response | stop_response | defer_response
+    reply_response | noreply_response | stop_response | stop_reply_response | defer_response
 
   @doc """
   handles messages sent to the StateMachine using `StateServer.cast/2`

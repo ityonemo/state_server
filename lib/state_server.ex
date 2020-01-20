@@ -580,7 +580,7 @@ defmodule StateServer do
     # populate a struct that generates lambdas for each of the overridden
     # callbacks.
 
-    state = %{generate_selector(module) | data: initializer}
+    state = %{generate_selector(module) | data: initializer, transition: nil}
 
     case Keyword.pop(options, :name) do
       {nil, options} ->
@@ -612,14 +612,22 @@ defmodule StateServer do
 
   @typep init_result :: :gen_statem.init_result(atom)
 
+  # an empty version of the the state_server internal datatype.  This is what
+  # state_server keeps under the hood, it surfaces "data" to the client module
+  # as encapsulated by the system.
+  #
+  # still needs to be populated with hook functions.
+  # in the future, this might become a struct.
+  @empty_init %{module: nil, data: nil, transition: nil}
+
   @impl true
   @spec init(data) :: init_result
   def init(init_data = %{module: module}) do
     default_state = StateGraph.start(module.__state_graph__())
 
-    module.init(init_data.data)
+    init_data.data
+    |> module.init()
     |> parse_init(default_state, init_data)
-    |> do_on_entry_init
   end
 
   defp parse_init({:ok, data}, state, data_wrap) do
@@ -703,107 +711,32 @@ defmodule StateServer do
       raise InvalidTransitionError, "transition #{tr} does not exist in #{module}"
     end
 
+    # cache the transition so that we can present it to on_state_entry
+    data_tr = %{data | transition: tr}
+
     state
     |> data.handle_transition.(tr, data.data)
     |> do_defer_translation(:handle_transition, state, tr, data)
     |> case do
       :cancel ->
-        {:keep_state, data, do_event_conversion(actions)}
+        {:keep_state, data_tr, do_event_conversion(actions)}
 
       {:cancel, extra_actions} ->
-        {:keep_state, data, do_event_conversion(actions ++ extra_actions)}
+        {:keep_state, data_tr, do_event_conversion(actions ++ extra_actions)}
 
       :noreply ->
-        do_on_entry({:next_state, next_state, data, do_event_conversion(actions)}, tr, state, data)
+        {:next_state, next_state, data_tr, do_event_conversion(actions)}
+
+      # update events at the beginning of the queue are privileged and are triggered
+      # before changisg state.
+      {:noreply, [{:update, new_data} | other_actions]} ->
+        {:next_state, next_state, %{data_tr | data: new_data}, do_event_conversion(actions ++ other_actions)}
 
       {:noreply, extra_actions} ->
-        do_on_entry({:next_state, next_state, data, do_event_conversion(actions ++ extra_actions)}, tr, state, data)
+        {:next_state, next_state, data_tr, do_event_conversion(actions ++ extra_actions)}
     end
   end
-
-  defp do_on_entry({:next_state, state, new_data, actions1}, tr, _old_state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions2]} ->
-        {:next_state, state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
-      {:noreply, actions2} ->
-        {:next_state, state, new_data, actions1 ++ do_event_conversion(actions2)}
-      :noreply ->
-        {:next_state, state, new_data, actions1}
-    end
-  end
-  defp do_on_entry({:next_state, state, new_data}, tr, _old_state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:next_state, state, %{data | data: newer_data}, do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:next_state, state, new_data, do_event_conversion(actions)}
-      :noreply ->
-        {:next_state, state, new_data}
-    end
-  end
-  defp do_on_entry({:repeat_state, new_data, actions1}, tr, state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions2]} ->
-        {:repeat_state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
-      {:noreply, actions2} ->
-        {:repeat_state, new_data, actions1 ++ do_event_conversion(actions2)}
-      :noreply ->
-        {:repeat_state, new_data, actions1}
-    end
-  end
-  defp do_on_entry({:repeat_state, new_data}, tr, state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:repeat_state, new_data, do_event_conversion(actions)}
-      :noreply ->
-        {:repeat_state, new_data}
-    end
-  end
-  defp do_on_entry(:repeat_state, tr, state, data) do
-    tr
-    |> data.on_state_entry.(state, data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:repeat_state, data, do_event_conversion(actions)}
-      :noreply ->
-        {:repeat_state, data}
-    end
-  end
-  defp do_on_entry(any, _, _, _), do: any
-
-  defp do_on_entry_init({:ok, state, data}), do: do_on_entry_init({:ok, state, data, []})
-  defp do_on_entry_init({:ok, state, data, old_actions}) when is_list(old_actions) do
-    nil
-    |> data.on_state_entry.(state, data.data)
-    |> do_defer_translation(:on_state_entry, nil, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:ok, state, %{data | data: newer_data}, old_actions ++ do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:ok, state, data, old_actions ++ do_event_conversion(actions)}
-      :noreply -> {:ok, state, data, old_actions}
-    end
-  end
-  defp do_on_entry_init({:ok, state, data, old_action}), do: do_on_entry_init({:ok, state, data, [old_action]})
-  defp do_on_entry_init(any), do: any
-
+#
   defp do_reply_translation(msg, from, state, data) do
     case msg do
       {:reply, reply} ->
@@ -824,14 +757,13 @@ defmodule StateServer do
         {:keep_state_and_data,
           [{:reply, from, reply} | do_event_conversion(actions)]}
 
-      other_msg ->
-        do_on_entry(other_msg, nil, state, data)
+      other_msg -> other_msg
     end
   end
 
   defp do_noreply_translation(msg, state, data) do
     case msg do
-      :noreply -> {:keep_state_and_data, []}
+      :noreply -> :keep_state_and_data
 
       {:noreply, [{:transition, tr}, {:update, new_data} | actions]} ->
         do_transition(state, tr, %{data | data: new_data}, actions)
@@ -845,8 +777,26 @@ defmodule StateServer do
       {:noreply, actions} ->
         {:keep_state_and_data, do_event_conversion(actions)}
 
-      other_msg ->
-        do_on_entry(other_msg, nil, state, data)
+      other_msg -> other_msg
+    end
+  end
+
+  defp do_on_state_entry_translation(msg, data) do
+    # similar to above, but: ignore "transition" and "update" directives at the head
+    # and also reset the transition to nil.
+
+    data_tr = %{data | transition: nil}
+
+    msg
+    |> case do
+      :noreply ->
+        {:keep_state, data_tr}
+
+      {:noreply, [{:update, new_data} | actions]} ->
+        {:keep_state, %{data_tr | data: new_data}, do_event_conversion(actions)}
+
+      {:noreply, actions} ->
+        {:keep_state, data_tr, do_event_conversion(actions)}
     end
   end
 
@@ -874,11 +824,11 @@ defmodule StateServer do
   def handle_event(:internal, {:"$transition", transition}, state, data) do
     do_transition(state, transition, data, [])
   end
-  def handle_event(:internal, {:"$goto", state}, old_state, data = %{module: module}) do
+  def handle_event(:internal, {:"$goto", state}, _old_state, data = %{module: module}) do
     unless Keyword.has_key?(module.__state_graph__, state) do
       raise InvalidStateError, "#{state} not in states for #{module}"
     end
-    do_on_entry({:next_state, state, data}, nil, old_state, data)
+   {:next_state, state, data}
   end
   def handle_event(:internal, {:"$update", new_data}, _state, data) do
     {:keep_state, %{data | data: new_data}, []}
@@ -938,8 +888,11 @@ defmodule StateServer do
     |> do_defer_translation(:handle_timeout, {name, payload}, state, data)
     |> do_noreply_translation(state, data)
   end
-  def handle_event(:enter, pre, post, data) do
-    :keep_state_and_data
+  def handle_event(:enter, _pre, post, data = %{on_state_entry: on_state_entry, transition: transition}) do
+    transition
+    |> on_state_entry.(post, data.data)
+    |> do_defer_translation(:on_state_entry, transition, post, data)
+    |> do_on_state_entry_translation(data)
   end
 
   #############################################################################
@@ -1006,7 +959,7 @@ defmodule StateServer do
     @optional_callbacks
     |> Enum.flat_map(&(&1))  # note that optional callbacks is an accumulating attribute
     |> Enum.reject(fn {fun, _} -> fun in @macro_callbacks end) #ignore is_ functions.
-    |> Enum.reduce(%{module: module, data: nil}, &add_callback(&2, module, &1))
+    |> Enum.reduce(%{@empty_init | module: module}, &add_callback(&2, module, &1))
   end
 
   ######################################################################

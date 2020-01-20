@@ -11,6 +11,11 @@ defmodule StateServerTest.OnStateEntryTest do
     def init(data), do: {:ok, data}
 
     @impl true
+    def handle_call(:get, _from, state, data) do
+      {:reply, data}
+    end
+
+    @impl true
     def handle_transition(_, :tr3, data) do
       {:noreply, update: Map.put(data, :updated, true)}
     end
@@ -60,10 +65,14 @@ defmodule StateServerTest.OnStateEntryTest do
       assert_receive {:end_via_transition, :tr2}
     end
 
+    @tag :one
     test "a transition will correctly update for on_state_entry" do
       {:ok, srv} = Module.start_link(%{pid: self()})
 
       GenServer.cast(srv, transition: :tr3)
+
+      Process.sleep(100)
+      StateServer.call(srv, :get) |> IO.inspect(label: "70")
 
       assert_receive :transition_did_update
     end

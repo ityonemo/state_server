@@ -670,8 +670,8 @@ defmodule StateServer do
   defp parse_init(any, _, _), do: any
 
   @impl true
-  @spec callback_mode() :: :handle_event_function
-  def callback_mode, do: :handle_event_function
+  @spec callback_mode() :: [:handle_event_function | :state_enter]
+  def callback_mode, do: [:handle_event_function, :state_enter]
 
   @spec do_event_conversion([event]) :: [:gen_statem.event_type]
   defp do_event_conversion([]), do: []
@@ -937,6 +937,9 @@ defmodule StateServer do
     |> data.handle_timeout.(state, data.data)
     |> do_defer_translation(:handle_timeout, {name, payload}, state, data)
     |> do_noreply_translation(state, data)
+  end
+  def handle_event(:enter, pre, post, data) do
+    :keep_state_and_data
   end
 
   #############################################################################

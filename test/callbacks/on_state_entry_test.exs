@@ -3,7 +3,7 @@ defmodule StateServerTest.OnStateEntryTest do
   use ExUnit.Case, async: true
 
   defmodule Module do
-    use StateServer, [start: [tr1: :end, tr2: :end], end: []]
+    use StateServer, [start: [tr1: :end, tr2: :end, tr3: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
 
@@ -11,8 +11,17 @@ defmodule StateServerTest.OnStateEntryTest do
     def init(data), do: {:ok, data}
 
     @impl true
+    def handle_transition(_, :tr3, data) do
+      {:noreply, update: Map.put(data, :updated, true)}
+    end
+
+    @impl true
     def on_state_entry(nil, :end, %{pid: pid}) do
       send(pid, :end_via_goto)
+      :noreply
+    end
+    def on_state_entry(_, :end, %{pid: pid, updated: true}) do
+      send(pid, :transition_did_update)
       :noreply
     end
     def on_state_entry(trans, :end, %{pid: pid}) do
@@ -49,6 +58,14 @@ defmodule StateServerTest.OnStateEntryTest do
       GenServer.cast(srv, transition: :tr2)
 
       assert_receive {:end_via_transition, :tr2}
+    end
+
+    test "a transition will correctly update for on_state_entry" do
+      {:ok, srv} = Module.start_link(%{pid: self()})
+
+      GenServer.cast(srv, transition: :tr3)
+
+      assert_receive :transition_did_update
     end
   end
 

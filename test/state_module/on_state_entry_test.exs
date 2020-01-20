@@ -14,8 +14,9 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
     def handle_call(action, _from, _state, _data), do: {:reply, :ok, action}
 
     @impl true
-    def handle_transition(:start, :tr_foo, pid) do
-      {:noreply, update: {"foo", pid}}
+    def handle_transition(:start, :tr_both, pid) do
+      # do a transition which will update the state
+      {:noreply, update: {:foo, pid}}
     end
     def handle_transition(_, _, _), do: :noreply
 

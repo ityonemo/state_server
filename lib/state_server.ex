@@ -846,18 +846,18 @@ defmodule StateServer do
         {:keep_state_and_data,
           [{:reply, from, reply} | do_event_conversion(actions)]}
 
-      {:stop, reason} ->
-        {:stop, reason, data}
-
-      {:stop, reason, new_data} ->
-        {:stop, reason, %{data | data: new_data}}
-
       {:stop, reason, reply, new_data} ->
         reply(from, reply)
-        {:stop, reason, %{data | data: new_data}}
+
+        # we need to pass this as a 4-term argument with private data
+        # because the noreply forms can also respond with stop with
+        # three parameters, this prevents the data from being overwritten
+        # into the interior twice.
+
+        {:stop, reason, :"$replied", %{data | data: new_data}}
 
       other_msg ->
-        do_on_entry(other_msg, nil, state, data)
+        other_msg
     end
   end
 
@@ -876,6 +876,16 @@ defmodule StateServer do
 
       {:noreply, actions} ->
         {:keep_state_and_data, do_event_conversion(actions)}
+
+      {:stop, reason} ->
+        {:stop, reason, data}
+
+      {:stop, reason, new_data} ->
+        {:stop, reason, %{data | data: new_data}}
+
+      # trap the 4-term form from the "reply" mode.
+      {:stop, reason, :"$replied", new_data} ->
+        {:stop, reason, new_data}
 
       other_msg ->
         do_on_entry(other_msg, nil, state, data)

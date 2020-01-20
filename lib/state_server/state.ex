@@ -48,6 +48,8 @@ defmodule StateServer.State do
   defstate ExternalModule, for: :state
   ```
 
+  Be sure to mark your `ExternalModule` as having the `StateServer.State` behaviour.
+
   ### Precedence and Defer statements
 
   Note that `handle_\*` functions written directly in the body of the
@@ -123,6 +125,13 @@ defmodule StateServer.State do
     in the first position, the update event will be reflected in the deferred
     state machine call.
 
+  ### Termination rules
+
+  If a State module implements the `c:terminate/2` callback, then it will be
+  called on termination.  If it does not, termination will follow the parent
+  StateServer's `c:StateServer.terminate/3` if it exists.  Otherwise, no
+  action will be taken on terminate.
+
   ## Example
 
   The following code should produce a "light switch" state server that
@@ -145,17 +154,18 @@ defmodule StateServer.State do
   @typedoc false
   @type stop_response :: StateServer.stop_response
 
-  @callback handle_call(term, from, term) :: reply_response | noreply_response | stop_response
-  @callback handle_cast(term, term) :: noreply_response | stop_response
-  @callback handle_continue(term, term) :: noreply_response | stop_response
-  @callback handle_info(term, term) :: noreply_response | stop_response
-  @callback handle_internal(term, term) :: noreply_response | stop_response
-  @callback handle_timeout(term, term) :: noreply_response | stop_response
-  @callback handle_transition(atom, term) :: noreply_response | stop_response | :cancel
-  @callback on_state_entry(atom, term) :: StateServer.on_state_entry_response
+  @callback handle_call(term, from, data :: term) :: reply_response | noreply_response | stop_response
+  @callback handle_cast(term, data :: term) :: noreply_response | stop_response
+  @callback handle_continue(term, data :: term) :: noreply_response | stop_response
+  @callback handle_info(term, data :: term) :: noreply_response | stop_response
+  @callback handle_internal(term, data :: term) :: noreply_response | stop_response
+  @callback handle_timeout(term, data :: term) :: noreply_response | stop_response
+  @callback handle_transition(transition :: atom, data :: term) :: noreply_response | stop_response | :cancel
+  @callback on_state_entry(transition :: atom, data :: term) :: StateServer.on_state_entry_response
+  @callback terminate(reason :: term, data :: term) :: term
 
   @optional_callbacks [handle_call: 3, handle_cast: 2, handle_continue: 2,
     handle_info: 2, handle_internal: 2, handle_timeout: 2, handle_transition: 2,
-    on_state_entry: 2]
+    on_state_entry: 2, terminate: 2]
 
 end

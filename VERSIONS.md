@@ -79,6 +79,10 @@
 
 - default to not using a proxy process for timeout calls (consistent with `GenServer`)
 
+## 0.4.6
+
+- make documentation on how to use :defer more clear (thanks to @bnns)
+
 ### Unscheduled
 
 - `on_data_update/4` special callback

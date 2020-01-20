@@ -3,7 +3,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
   use ExUnit.Case, async: true
 
   defmodule StateEntry do
-    use StateServer, [start: [tr: :end, tr_trap: :end], end: []]
+    use StateServer, [start: [tr: :end, tr_trap: :end, tr_double: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
 
@@ -21,14 +21,25 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
 
     @impl true
     def on_state_entry(:tr_trap, :end, pid) do
+      # traps the state_entry early and doesn't fall through to
+      # the state module.
       send(pid, :trapped_route)
       :noreply
+    end
+    def on_state_entry(:tr_double, :end, pid) do
+      # allows for a double-hit
+      send(pid, :first_hit)
+      :defer
     end
     def on_state_entry(_, :start, _), do: :noreply
     defer on_state_entry
 
     defstate End, for: :end do
       @impl true
+      def on_state_entry(:tr_double, resp_pid) do
+        send(resp_pid, :second_hit)
+        :noreply
+      end
       def on_state_entry(trans, resp_pid) do
         send(resp_pid, {:entry_via, trans})
         :noreply
@@ -54,6 +65,13 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       {:ok, pid} = StateEntry.start_link(self())
       GenServer.call(pid, transition: :tr_trap)
       assert_receive :trapped_route
+    end
+
+    test "double hits must be explicit" do
+      {:ok, pid} = StateEntry.start_link(self())
+      GenServer.call(pid, transition: :tr_double)
+      assert_receive :first_hit
+      assert_receive :second_hit
     end
   end
 

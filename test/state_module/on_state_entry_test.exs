@@ -3,7 +3,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
   use ExUnit.Case, async: true
 
   defmodule StateEntry do
-    use StateServer, [start: [tr: :end, tr_foo: :end], end: []]
+    use StateServer, [start: [tr: :end, tr_trap: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
 
@@ -20,8 +20,8 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
     def handle_transition(_, _, _), do: :noreply
 
     @impl true
-    def on_state_entry(:tr_foo, :end, {"foo", pid}) do
-      send(pid, :foo_verified)
+    def on_state_entry(:tr_trap, :end, pid) do
+      send(pid, :trapped_route)
       :noreply
     end
     def on_state_entry(_, :start, _), do: :noreply
@@ -50,11 +50,10 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       assert_receive {:entry_via, nil}
     end
 
-    test "it receives state updates" do
+    test "you can still trap special cases" do
       {:ok, pid} = StateEntry.start_link(self())
-      GenServer.call(pid, transition: :tr_foo)
-      assert_receive {:entry_via, :tr_foo}
-      assert_receive {:foo_verified, nil}
+      GenServer.call(pid, transition: :tr_trap)
+      assert_receive :trapped_route
     end
   end
 

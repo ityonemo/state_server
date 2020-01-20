@@ -72,6 +72,8 @@ defmodule StateServerTest.OtpTest do
 
       assert :foo == TestServerOverridden.get_state(TestServer)
 
+      StateServer.__introspect__(TestServer)
+
       TestServerOverridden.stop(TestServer)
 
       Process.sleep(20)

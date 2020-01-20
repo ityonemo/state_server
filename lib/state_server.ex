@@ -378,6 +378,12 @@ defmodule StateServer do
   @callback handle_transition(state :: atom, transition :: atom, data :: term) ::
     noreply_response | stop_response | defer_response | :cancel
 
+  @doc """
+  triggered when the process is about to be terminated.  See:
+  `c::gen_statem.terminate/3`
+  """
+  @callback terminate(reason :: term, state :: atom, data :: term) :: any
+
   @typedoc """
   on_state_entry function outputs
 
@@ -444,7 +450,7 @@ defmodule StateServer do
 
   @optional_callbacks [handle_call: 4, handle_cast: 3, handle_info: 3,
     handle_internal: 3, handle_continue: 3, handle_timeout: 3, handle_transition: 3,
-    on_state_entry: 3]
+    on_state_entry: 3, terminate: 3]
 
   @macro_callbacks [:is_terminal, :is_transition]
 
@@ -574,40 +580,55 @@ defmodule StateServer do
   @typedoc false
   @type start_option :: :gen_statem.options | {:name, atom}
 
-  @spec start_link(module, term, [start_option]) :: :gen_statem.start_ret
-  def start_link(module, initializer, options \\ []) do
+  # generalized starting process, that works for both start/2,3 and start_link/2,3
+  defmacrop starter(start_fn) do
+    states_mod = __MODULE__
+    quote do
+      # de-hygeinize parameters from the function
+      {module, initializer, options} = {var!(module), var!(initializer), var!(options)}
+      # populate a struct that generates lambdas for each of the overridden
+      # callbacks.
 
-    # populate a struct that generates lambdas for each of the overridden
-    # callbacks.
+      state = %{generate_selector(module) | data: initializer}
 
-    state = %{generate_selector(module) | data: initializer}
+      case Keyword.pop(options, :name) do
+        {nil, options} ->
+          :gen_statem.unquote(start_fn)(unquote(states_mod), state, options)
 
-    case Keyword.pop(options, :name) do
-      {nil, options} ->
-        :gen_statem.start_link(__MODULE__, state, options)
+        {atom, options} when is_atom(atom) ->
+          :gen_statem.unquote(start_fn)({:local, atom}, unquote(states_mod),
+            state, Keyword.delete(options, :name))
 
-      {atom, options} when is_atom(atom) ->
-        :gen_statem.start_link({:local, atom}, __MODULE__,
+        {global = {:global, _term}, options} ->
+          :gen_statem.unquote(start_fn)(global, unquote(states_mod),
           state, Keyword.delete(options, :name))
 
-      {global = {:global, _term}, options} ->
-        :gen_statem.start_link(global, __MODULE__,
-        state, Keyword.delete(options, :name))
+        {via = {:via, via_module, _term}, options} when is_atom(via_module) ->
+          :gen_statem.unquote(start_fn)(via, unquote(states_mod),
+          state, Keyword.delete(options, :name))
 
-      {via = {:via, via_module, _term}, options} when is_atom(via_module) ->
-        :gen_statem.start_link(via, __MODULE__,
-        state, Keyword.delete(options, :name))
-
-      {other, _} ->
-        raise ArgumentError, """
-        expected :name option to be one of the following:
-          * nil
-          * atom
-          * {:global, term}
-          * {:via, module, term}
-        Got: #{inspect(other)}
-        """
+        {other, _} ->
+          raise ArgumentError, """
+          expected :name option to be one of the following:
+            * nil
+            * atom
+            * {:global, term}
+            * {:via, module, term}
+          Got: #{inspect(other)}
+          """
+      end
     end
+  end
+
+
+  @spec start(module, term, [start_option]) :: :gen_statem.start_ret
+  def start(module, initializer, options \\ []) do
+    starter(:start)
+  end
+
+  @spec start_link(module, term, [start_option]) :: :gen_statem.start_ret
+  def start_link(module, initializer, options \\ []) do
+    starter(:start_link)
   end
 
   @typep init_result :: :gen_statem.init_result(atom)
@@ -824,6 +845,16 @@ defmodule StateServer do
         {:keep_state_and_data,
           [{:reply, from, reply} | do_event_conversion(actions)]}
 
+      {:stop, reason} ->
+        {:stop, reason, data}
+
+      {:stop, reason, new_data} ->
+        {:stop, reason, %{data | data: new_data}}
+
+      {:stop, reason, reply, new_data} ->
+        reply(from, reply)
+        {:stop, reason, %{data | data: new_data}}
+
       other_msg ->
         do_on_entry(other_msg, nil, state, data)
     end
@@ -852,6 +883,11 @@ defmodule StateServer do
 
   @impl true
   @spec handle_event(event, any, atom, internal_data) :: internal_event_result
+  def handle_event({:call, from}, :"$introspect", state, data) do
+    # for debugging purposes.
+    reply(from, Map.put(data, :state, state))
+    :keep_state_and_data
+  end
   def handle_event({:call, from}, content, state, data) do
     content
     |> data.handle_call.(from, state, data.data)
@@ -939,6 +975,15 @@ defmodule StateServer do
     |> do_noreply_translation(state, data)
   end
 
+  @impl true
+  @spec terminate(any, atom, data) :: any
+  def terminate(reason, state, %{terminate: terminate, data: data}) do
+    terminate.(reason, state, data)
+  end
+
+  @spec __default_terminate__(any, atom, any) :: any
+  def __default_terminate__(_, _, _), do: :ok
+
   #############################################################################
   ## GenServer wrappers.
 
@@ -989,6 +1034,10 @@ defmodule StateServer do
         :erlang.make_fun(module, fun, arity)
       function_exported?(module, shim, arity) ->
         :erlang.make_fun(module, shim, arity)
+      fun == :terminate ->
+        # we can't cast terminate back to this module's terminate,
+        # because that will cause an infnite loop.
+        :erlang.make_fun(__MODULE__, :__default_terminate__, arity)
       true ->
         :erlang.make_fun(__MODULE__, fun, arity)
     end
@@ -1104,10 +1153,12 @@ defmodule StateServer do
   end
 
   defmacro __before_compile__(_) do
+    module = __CALLER__.module
 
-    state_graph = Module.get_attribute(__CALLER__.module, :state_graph)
-    body_modules = Module.get_attribute(__CALLER__.module, :__body_modules__)
+    state_graph = Module.get_attribute(module, :state_graph)
+    body_modules = Module.get_attribute(module, :__body_modules__)
 
+    # verify that our body modules are okay.
     Enum.each(Keyword.keys(body_modules), fn state ->
       unless Keyword.has_key?(state_graph, state) do
         raise ArgumentError, "you attempted to bind a module to nonexistent state #{state}"
@@ -1120,7 +1171,7 @@ defmodule StateServer do
     |> Enum.map(&make_shim(&1, body_modules))
 
     quote do
-      unquote(shims)
+      unquote_splicing(shims)
     end
   end
 
@@ -1144,18 +1195,21 @@ defmodule StateServer do
       end
     end
   end
+  # handle transition has an unusal parameter order.
   defp make_function_for(module, :handle_transition, state) do
     quote do
       @doc false
+
       def __handle_transition_shim__(unquote(state), transition, data) do
         unquote(module).handle_transition(transition, data)
       end
     end
   end
-  # works for handle_cast/3, handle_info/3, handle_internal/3, handle_continue/3, handle_timeout/3
+  # works for handle_cast/3, handle_info/3, handle_internal/3, handle_continue/3, handle_timeout/3,
+  # on_state_entry/3, and terminate/3
   defp make_function_for(module, fun, state)
        when fun in [:handle_cast, :handle_info, :handle_internal,
-                    :handle_continue, :handle_timeout, :on_state_entry] do
+                    :handle_continue, :handle_timeout, :on_state_entry, :terminate] do
     shim_fn_name = Macros.state_shim_for(fun)
     quote do
       @doc false
@@ -1191,5 +1245,8 @@ defmodule StateServer do
       def unquote(fun)(_, _, _), do: :defer
     end
   end
+
+  # a debugging tool
+  def __introspect__(srv), do: call(srv, :"$introspect")
 
 end

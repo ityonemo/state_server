@@ -5,14 +5,20 @@ defmodule StateServerTest.Callbacks.TerminateTest do
   defmodule Instrumented do
     use StateServer, [start: [tr: :end], end: []]
 
-    def start_link(resp_pid), do: StateServer.start_link(__MODULE__, resp_pid)
+    def start(resp_pid), do: StateServer.start(__MODULE__, resp_pid)
 
     @impl true
-    def init(resp_pid), do: {:ok, resp_pid}
+    def init(resp_pid) do
+      {:ok, resp_pid}
+    end
 
     @impl true
-    def handle_call(:tr, _reply, _state, _data) do
+    def handle_call(:tr, _from, _state, _data) do
       {:reply, nil, transition: :tr}
+    end
+    def handle_call(:stop, from, _state, resp_pid) do
+      reply(from, nil)
+      {:stop, :normal, resp_pid}
     end
 
     @impl true
@@ -24,16 +30,17 @@ defmodule StateServerTest.Callbacks.TerminateTest do
 
   describe "instrumenting terminate" do
     test "works from the initial state" do
-      {:ok, srv} = Instrumented.start_link(self())
-      Process.exit(srv, :normal)
+      {:ok, srv} = Instrumented.start(self())
+      StateServer.call(srv, :stop)
       assert_receive {:terminating_from, :start}
+      refute Process.alive?(srv)
     end
 
     test "works from another state state" do
-      {:ok, srv} = Instrumented.start_link(self())
-      GenServer.call(srv, :tr)
-      Process.exit(srv, :normal)
-      assert_receive {:terminating_from, :start}
+      {:ok, srv} = Instrumented.start(self())
+      StateServer.call(srv, :tr)
+      StateServer.call(srv, :stop)
+      assert_receive {:terminating_from, :end}
     end
   end
 end

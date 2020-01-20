@@ -3,7 +3,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
   use ExUnit.Case, async: true
 
   defmodule StateEntry do
-    use StateServer, [start: [tr: :end, tr_trap: :end, tr_double: :end], end: []]
+    use StateServer, [start: [tr: :end, tr_trap: :end, tr_double: :end, tr_update: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
 
@@ -14,9 +14,9 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
     def handle_call(action, _from, _state, _data), do: {:reply, :ok, action}
 
     @impl true
-    def handle_transition(:start, :tr_both, pid) do
-      # do a transition which will update the state
-      {:noreply, update: {:foo, pid}}
+    def handle_transition(:start, :tr_update, pid) do
+      # do a transition which will modify the state
+      {:noreply, update: {:update, pid}}
     end
     def handle_transition(_, _, _), do: :noreply
 
@@ -37,6 +37,10 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
 
     defstate End, for: :end do
       @impl true
+      def on_state_entry(_, {:update, resp_pid}) do
+        send(resp_pid, :update_verified)
+        :noreply
+      end
       def on_state_entry(:tr_double, resp_pid) do
         send(resp_pid, :second_hit)
         :noreply
@@ -73,6 +77,12 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       GenServer.call(pid, transition: :tr_double)
       assert_receive :first_hit
       assert_receive :second_hit
+    end
+
+    test "you can trigger an update" do
+      {:ok, pid} = StateEntry.start_link(self())
+      GenServer.call(pid, transition: :tr_update)
+      assert_receive :update_verified
     end
   end
 

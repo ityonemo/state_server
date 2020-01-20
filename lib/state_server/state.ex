@@ -48,6 +48,8 @@ defmodule StateServer.State do
   defstate ExternalModule, for: :state
   ```
 
+  Be sure to mark your `ExternalModule` as having the `StateServer.State` behaviour.
+
   ### Precedence and Defer statements
 
   Note that `handle_\*` functions written directly in the body of the

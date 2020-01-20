@@ -1135,6 +1135,12 @@ defmodule StateServer do
       unless Keyword.has_key?(state_graph, state) do
         raise ArgumentError, "you attempted to bind a module to nonexistent state #{state}"
       end
+
+      behaviours = state_modules[state].__info__(:attributes)[:behaviour]
+
+      unless behaviours && (StateServer.State in behaviours)  do
+        raise CompileError, description: "the module #{state_modules[state]} doesn't implement the StateServer.State behaviour."
+      end
     end)
 
     shims = @optional_callbacks

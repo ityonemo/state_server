@@ -82,6 +82,16 @@ defmodule StateServer.State do
   defer handle_call
   ```
 
+  #### Important
+
+  If you handle an event via **any** instance of a handler function block in
+  the main `StateServer` module, and return a  `:reply` or `:noreply`, it
+  will **not** be handled by the `State` module, you must explicitly
+  specify `:defer` to be handled by `State` modules.
+
+  If there are **no** instances of the handler function, then handling will
+  default to the `State` modules without using the `defer` macro.
+
   #### Defer with common events
 
   If you would like to perform analysis on the inbound data, generating events

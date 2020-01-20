@@ -565,8 +565,9 @@ defmodule StateServer do
       end
       defoverridable child_spec: 1
 
-      # keep track of __body_modules__
-      Module.register_attribute(__MODULE__, :__body_modules__, accumulate: true)
+      # keep track of state_modules
+      Module.register_attribute(__MODULE__, :state_modules, accumulate: true, persist: true)
+
       @before_compile StateServer
 
       # make initial state value
@@ -977,12 +978,16 @@ defmodule StateServer do
 
   @impl true
   @spec terminate(any, atom, data) :: any
-  def terminate(reason, state, %{terminate: terminate, data: data}) do
-    terminate.(reason, state, data)
+  def terminate(reason, state, %{module: module, data: data}) do
+    with s_modules when not is_nil(s_modules) <- module.__info__(:attributes)[:state_modules],
+         submodule when not is_nil(submodule) <- s_modules[state],
+         true <- function_exported?(submodule, :terminate, 2) do
+      submodule.terminate(reason, data)
+    else
+      _ ->
+        function_exported?(module, :terminate, 3) && module.terminate(reason, state, data)
+    end
   end
-
-  @spec __default_terminate__(any, atom, any) :: any
-  def __default_terminate__(_, _, _), do: :ok
 
   #############################################################################
   ## GenServer wrappers.
@@ -1034,10 +1039,6 @@ defmodule StateServer do
         :erlang.make_fun(module, fun, arity)
       function_exported?(module, shim, arity) ->
         :erlang.make_fun(module, shim, arity)
-      fun == :terminate ->
-        # we can't cast terminate back to this module's terminate,
-        # because that will cause an infnite loop.
-        :erlang.make_fun(__MODULE__, :__default_terminate__, arity)
       true ->
         :erlang.make_fun(__MODULE__, fun, arity)
     end
@@ -1051,7 +1052,7 @@ defmodule StateServer do
   defp generate_selector(module) do
     @optional_callbacks
     |> Enum.flat_map(&(&1))  # note that optional callbacks is an accumulating attribute
-    |> Enum.reject(fn {fun, _} -> fun in @macro_callbacks end) #ignore is_ functions.
+    |> Enum.reject(fn {fun, _} -> (fun in [:terminate | @macro_callbacks]) end) #ignore is_ functions.
     |> Enum.reduce(%{module: module, data: nil}, &add_callback(&2, module, &1))
   end
 
@@ -1123,7 +1124,7 @@ defmodule StateServer do
     module_name = Module.concat(__CALLER__.module, module_alias)
     code! = inject_behaviour(code)
     quote do
-      @__body_modules__ {unquote(state), unquote(module_name)}
+      @state_modules {unquote(state), unquote(module_name)}
       defmodule unquote(module_ast), unquote(code!)
     end
   end
@@ -1141,7 +1142,7 @@ defmodule StateServer do
     module_name = Macro.expand(module, __CALLER__)
     quote do
       require unquote(module_name)  # the module needs to be loaded to avoid strange compilation race conditions.
-      @__body_modules__ {unquote(state), unquote(module_name)}
+      @state_modules {unquote(state), unquote(module_name)}
     end
   end
 
@@ -1156,10 +1157,10 @@ defmodule StateServer do
     module = __CALLER__.module
 
     state_graph = Module.get_attribute(module, :state_graph)
-    body_modules = Module.get_attribute(module, :__body_modules__)
+    state_modules = Module.get_attribute(module, :state_modules)
 
     # verify that our body modules are okay.
-    Enum.each(Keyword.keys(body_modules), fn state ->
+    Enum.each(Keyword.keys(state_modules), fn state ->
       unless Keyword.has_key?(state_graph, state) do
         raise ArgumentError, "you attempted to bind a module to nonexistent state #{state}"
       end
@@ -1168,15 +1169,15 @@ defmodule StateServer do
     shims = @optional_callbacks
     |> Enum.flat_map(&(&1))
     |> Enum.reject(fn {fun, _} -> fun in @macro_callbacks end)
-    |> Enum.map(&make_shim(&1, body_modules))
+    |> Enum.map(&make_shim(&1, state_modules))
 
     quote do
       unquote_splicing(shims)
     end
   end
 
-  defp make_shim({fun, arity}, body_modules) do
-    shim_parts = Enum.map(body_modules, fn {state, module} ->
+  defp make_shim({fun, arity}, state_modules) do
+    shim_parts = Enum.map(state_modules, fn {state, module} ->
       if function_exported?(module, fun, arity - 1) do
         make_function_for(module, fun, state)
       end
@@ -1247,6 +1248,8 @@ defmodule StateServer do
   end
 
   # a debugging tool
+  @doc false
+  @spec __introspect__(GenServer.server) :: map
   def __introspect__(srv), do: call(srv, :"$introspect")
 
 end

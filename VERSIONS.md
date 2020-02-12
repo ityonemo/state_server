@@ -75,6 +75,18 @@
 
 - deferred calls are passed the updated state.
 
+## 0.4.5
+
+- default to not using a proxy process for timeout calls (consistent with `GenServer`)
+
+## 0.4.6
+
+- repaired error in handle_transition logic so that updates are now reflected in
+  on_state_entry; also refactored system to use gen_statem's event handling system (thanks to @bnns)
+- make documentation on how to use :defer more clear (thanks to @bnns)
+- added support for the `terminate/3` callback
+- added support for `start/2` and `start/3` in addition to `start_link`
+
 ### Unscheduled
 
 - `on_data_update/4` special callback

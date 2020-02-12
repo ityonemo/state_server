@@ -250,16 +250,21 @@ defmodule StateServer do
   @typedoc "handler output when you want to defer to a state module"
   @type defer_response :: {:defer, [event]} | :defer
 
-  @typedoc "handler output when the state machine should stop altogether"
+  @typedoc """
+  handler output when the state machine should stop altogether.  The value in
+  `new_data` will be transferred as the data segment for `c:terminate/3`, so you
+  may instrument important information there.
+  """
   @type stop_response ::
-    :stop | {:stop, reason :: term} | {:stop, reason :: term, new_data :: term} |
-    {:stop_and_reply,
-      reason :: term,
-      replies :: [:gen_statem.reply_action] | :gen_statem.reply_action} |
-    {:stop_and_reply,
-      reason :: term,
-      replies :: [:gen_statem.reply_action] | :gen_statem.reply_action,
-      new_data :: term}
+    {:stop, reason :: term} | {:stop, reason :: term, new_data :: term}
+
+  @typedoc """
+  handler output for `c:handle_call/4` which performs a stop action with a reply.
+  If you would prefer stopping in an alternate form, you may enlist the help of
+  `reply/2`.
+  """
+  @type stop_reply_response ::
+    {:stop, reason :: term, reply :: term, new_data :: term}
 
   @type timeout_payload :: {name :: atom, payload :: term} | (name :: atom) | (payload :: term)
 
@@ -329,7 +334,7 @@ defmodule StateServer do
   handles messages sent to the StateMachine using `StateServer.call/3`
   """
   @callback handle_call(term, from, state :: atom, data :: term) ::
-    reply_response | noreply_response | stop_response | defer_response
+    reply_response | noreply_response | stop_response | stop_reply_response | defer_response
 
   @doc """
   handles messages sent to the StateMachine using `StateServer.cast/2`
@@ -377,6 +382,12 @@ defmodule StateServer do
   """
   @callback handle_transition(state :: atom, transition :: atom, data :: term) ::
     noreply_response | stop_response | defer_response | :cancel
+
+  @doc """
+  triggered when the process is about to be terminated.  See:
+  `c::gen_statem.terminate/3`
+  """
+  @callback terminate(reason :: term, state :: atom, data :: term) :: any
 
   @typedoc """
   on_state_entry function outputs
@@ -444,7 +455,7 @@ defmodule StateServer do
 
   @optional_callbacks [handle_call: 4, handle_cast: 3, handle_info: 3,
     handle_internal: 3, handle_continue: 3, handle_timeout: 3, handle_transition: 3,
-    on_state_entry: 3]
+    on_state_entry: 3, terminate: 3]
 
   @macro_callbacks [:is_terminal, :is_transition]
 
@@ -559,8 +570,9 @@ defmodule StateServer do
       end
       defoverridable child_spec: 1
 
-      # keep track of __body_modules__
-      Module.register_attribute(__MODULE__, :__body_modules__, accumulate: true)
+      # keep track of state_modules
+      Module.register_attribute(__MODULE__, :state_modules, accumulate: true, persist: true)
+
       @before_compile StateServer
 
       # make initial state value
@@ -574,52 +586,75 @@ defmodule StateServer do
   @typedoc false
   @type start_option :: :gen_statem.options | {:name, atom}
 
-  @spec start_link(module, term, [start_option]) :: :gen_statem.start_ret
-  def start_link(module, initializer, options \\ []) do
+  # generalized starting process, that works for both start/2,3 and start_link/2,3
+  defmacrop starter(start_fn) do
+    states_mod = __MODULE__
+    quote do
+      # de-hygeinize parameters from the function
+      {module, initializer, options} = {var!(module), var!(initializer), var!(options)}
+      # populate a struct that generates lambdas for each of the overridden
+      # callbacks.
 
-    # populate a struct that generates lambdas for each of the overridden
-    # callbacks.
+      state = %{generate_selector(module) | data: initializer}
 
-    state = %{generate_selector(module) | data: initializer}
+      case Keyword.pop(options, :name) do
+        {nil, options} ->
+          :gen_statem.unquote(start_fn)(unquote(states_mod), state, options)
 
-    case Keyword.pop(options, :name) do
-      {nil, options} ->
-        :gen_statem.start_link(__MODULE__, state, options)
+        {atom, options} when is_atom(atom) ->
+          :gen_statem.unquote(start_fn)({:local, atom}, unquote(states_mod),
+            state, Keyword.delete(options, :name))
 
-      {atom, options} when is_atom(atom) ->
-        :gen_statem.start_link({:local, atom}, __MODULE__,
+        {global = {:global, _term}, options} ->
+          :gen_statem.unquote(start_fn)(global, unquote(states_mod),
           state, Keyword.delete(options, :name))
 
-      {global = {:global, _term}, options} ->
-        :gen_statem.start_link(global, __MODULE__,
-        state, Keyword.delete(options, :name))
+        {via = {:via, via_module, _term}, options} when is_atom(via_module) ->
+          :gen_statem.unquote(start_fn)(via, unquote(states_mod),
+          state, Keyword.delete(options, :name))
 
-      {via = {:via, via_module, _term}, options} when is_atom(via_module) ->
-        :gen_statem.start_link(via, __MODULE__,
-        state, Keyword.delete(options, :name))
-
-      {other, _} ->
-        raise ArgumentError, """
-        expected :name option to be one of the following:
-          * nil
-          * atom
-          * {:global, term}
-          * {:via, module, term}
-        Got: #{inspect(other)}
-        """
+        {other, _} ->
+          raise ArgumentError, """
+          expected :name option to be one of the following:
+            * nil
+            * atom
+            * {:global, term}
+            * {:via, module, term}
+          Got: #{inspect(other)}
+          """
+      end
     end
   end
 
+
+  @spec start(module, term, [start_option]) :: :gen_statem.start_ret
+  def start(module, initializer, options \\ []) do
+    starter(:start)
+  end
+
+  @spec start_link(module, term, [start_option]) :: :gen_statem.start_ret
+  def start_link(module, initializer, options \\ []) do
+    starter(:start_link)
+  end
+
   @typep init_result :: :gen_statem.init_result(atom)
+
+  # an empty version of the the state_server internal datatype.  This is what
+  # state_server keeps under the hood, it surfaces "data" to the client module
+  # as encapsulated by the system.
+  #
+  # still needs to be populated with hook functions.
+  # in the future, this might become a struct.
+  @empty_init %{module: nil, data: nil, transition: nil}
 
   @impl true
   @spec init(data) :: init_result
   def init(init_data = %{module: module}) do
     default_state = StateGraph.start(module.__state_graph__())
 
-    module.init(init_data.data)
+    init_data.data
+    |> module.init()
     |> parse_init(default_state, init_data)
-    |> do_on_entry_init
   end
 
   defp parse_init({:ok, data}, state, data_wrap) do
@@ -670,8 +705,8 @@ defmodule StateServer do
   defp parse_init(any, _, _), do: any
 
   @impl true
-  @spec callback_mode() :: :handle_event_function
-  def callback_mode, do: :handle_event_function
+  @spec callback_mode() :: [:handle_event_function | :state_enter]
+  def callback_mode, do: [:handle_event_function, :state_enter]
 
   @spec do_event_conversion([event]) :: [:gen_statem.event_type]
   defp do_event_conversion([]), do: []
@@ -703,107 +738,32 @@ defmodule StateServer do
       raise InvalidTransitionError, "transition #{tr} does not exist in #{module}"
     end
 
+    # cache the transition so that we can present it to on_state_entry
+    data_tr = %{data | transition: tr}
+
     state
     |> data.handle_transition.(tr, data.data)
     |> do_defer_translation(:handle_transition, state, tr, data)
     |> case do
       :cancel ->
-        {:keep_state, data, do_event_conversion(actions)}
+        {:keep_state, data_tr, do_event_conversion(actions)}
 
       {:cancel, extra_actions} ->
-        {:keep_state, data, do_event_conversion(actions ++ extra_actions)}
+        {:keep_state, data_tr, do_event_conversion(actions ++ extra_actions)}
 
       :noreply ->
-        do_on_entry({:next_state, next_state, data, do_event_conversion(actions)}, tr, state, data)
+        {:next_state, next_state, data_tr, do_event_conversion(actions)}
+
+      # update events at the beginning of the queue are privileged and are triggered
+      # before changisg state.
+      {:noreply, [{:update, new_data} | other_actions]} ->
+        {:next_state, next_state, %{data_tr | data: new_data}, do_event_conversion(actions ++ other_actions)}
 
       {:noreply, extra_actions} ->
-        do_on_entry({:next_state, next_state, data, do_event_conversion(actions ++ extra_actions)}, tr, state, data)
+        {:next_state, next_state, data_tr, do_event_conversion(actions ++ extra_actions)}
     end
   end
-
-  defp do_on_entry({:next_state, state, new_data, actions1}, tr, _old_state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions2]} ->
-        {:next_state, state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
-      {:noreply, actions2} ->
-        {:next_state, state, new_data, actions1 ++ do_event_conversion(actions2)}
-      :noreply ->
-        {:next_state, state, new_data, actions1}
-    end
-  end
-  defp do_on_entry({:next_state, state, new_data}, tr, _old_state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:next_state, state, %{data | data: newer_data}, do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:next_state, state, new_data, do_event_conversion(actions)}
-      :noreply ->
-        {:next_state, state, new_data}
-    end
-  end
-  defp do_on_entry({:repeat_state, new_data, actions1}, tr, state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions2]} ->
-        {:repeat_state, %{data| data: newer_data}, actions1 ++ do_event_conversion(actions2)}
-      {:noreply, actions2} ->
-        {:repeat_state, new_data, actions1 ++ do_event_conversion(actions2)}
-      :noreply ->
-        {:repeat_state, new_data, actions1}
-    end
-  end
-  defp do_on_entry({:repeat_state, new_data}, tr, state, data) do
-    tr
-    |> data.on_state_entry.(state, new_data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:repeat_state, new_data, do_event_conversion(actions)}
-      :noreply ->
-        {:repeat_state, new_data}
-    end
-  end
-  defp do_on_entry(:repeat_state, tr, state, data) do
-    tr
-    |> data.on_state_entry.(state, data.data)
-    |> do_defer_translation(:on_state_entry, tr, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:repeat_state, %{data| data: newer_data}, do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:repeat_state, data, do_event_conversion(actions)}
-      :noreply ->
-        {:repeat_state, data}
-    end
-  end
-  defp do_on_entry(any, _, _, _), do: any
-
-  defp do_on_entry_init({:ok, state, data}), do: do_on_entry_init({:ok, state, data, []})
-  defp do_on_entry_init({:ok, state, data, old_actions}) when is_list(old_actions) do
-    nil
-    |> data.on_state_entry.(state, data.data)
-    |> do_defer_translation(:on_state_entry, nil, state, data)
-    |> case do
-      {:noreply, [{:update, newer_data} | actions]} ->
-        {:ok, state, %{data | data: newer_data}, old_actions ++ do_event_conversion(actions)}
-      {:noreply, actions} ->
-        {:ok, state, data, old_actions ++ do_event_conversion(actions)}
-      :noreply -> {:ok, state, data, old_actions}
-    end
-  end
-  defp do_on_entry_init({:ok, state, data, old_action}), do: do_on_entry_init({:ok, state, data, [old_action]})
-  defp do_on_entry_init(any), do: any
-
+#
   defp do_reply_translation(msg, from, state, data) do
     case msg do
       {:reply, reply} ->
@@ -824,14 +784,23 @@ defmodule StateServer do
         {:keep_state_and_data,
           [{:reply, from, reply} | do_event_conversion(actions)]}
 
-      other_msg ->
-        do_on_entry(other_msg, nil, state, data)
+      {:stop, reason, reply, new_data} ->
+        reply(from, reply)
+
+        # we need to pass this as a 4-term argument with private data
+        # because the noreply forms can also respond with stop with
+        # three parameters, this prevents the data from being overwritten
+        # into the interior twice.
+
+        {:stop, reason, :"$replied", %{data | data: new_data}}
+
+      other_msg -> other_msg
     end
   end
 
   defp do_noreply_translation(msg, state, data) do
     case msg do
-      :noreply -> {:keep_state_and_data, []}
+      :noreply -> :keep_state_and_data
 
       {:noreply, [{:transition, tr}, {:update, new_data} | actions]} ->
         do_transition(state, tr, %{data | data: new_data}, actions)
@@ -845,13 +814,46 @@ defmodule StateServer do
       {:noreply, actions} ->
         {:keep_state_and_data, do_event_conversion(actions)}
 
-      other_msg ->
-        do_on_entry(other_msg, nil, state, data)
+      {:stop, reason} ->
+        {:stop, reason, data}
+
+      {:stop, reason, new_data} ->
+        {:stop, reason, %{data | data: new_data}}
+
+      # trap the 4-term form from the "reply" mode.
+      {:stop, reason, :"$replied", new_data} ->
+        {:stop, reason, new_data}
+
+      other_msg -> other_msg
+    end
+  end
+
+  defp do_on_state_entry_translation(msg, data) do
+    # similar to above, but: ignore "transition" and "update" directives at the head
+    # and also reset the transition to nil.
+
+    data_tr = %{data | transition: nil}
+
+    msg
+    |> case do
+      :noreply ->
+        {:keep_state, data_tr}
+
+      {:noreply, [{:update, new_data} | actions]} ->
+        {:keep_state, %{data_tr | data: new_data}, do_event_conversion(actions)}
+
+      {:noreply, actions} ->
+        {:keep_state, data_tr, do_event_conversion(actions)}
     end
   end
 
   @impl true
   @spec handle_event(event, any, atom, internal_data) :: internal_event_result
+  def handle_event({:call, from}, :"$introspect", state, data) do
+    # for debugging purposes.
+    reply(from, Map.put(data, :state, state))
+    :keep_state_and_data
+  end
   def handle_event({:call, from}, content, state, data) do
     content
     |> data.handle_call.(from, state, data.data)
@@ -874,11 +876,11 @@ defmodule StateServer do
   def handle_event(:internal, {:"$transition", transition}, state, data) do
     do_transition(state, transition, data, [])
   end
-  def handle_event(:internal, {:"$goto", state}, old_state, data = %{module: module}) do
+  def handle_event(:internal, {:"$goto", state}, _old_state, data = %{module: module}) do
     unless Keyword.has_key?(module.__state_graph__, state) do
       raise InvalidStateError, "#{state} not in states for #{module}"
     end
-    do_on_entry({:next_state, state, data}, nil, old_state, data)
+   {:next_state, state, data}
   end
   def handle_event(:internal, {:"$update", new_data}, _state, data) do
     {:keep_state, %{data | data: new_data}, []}
@@ -938,6 +940,25 @@ defmodule StateServer do
     |> do_defer_translation(:handle_timeout, {name, payload}, state, data)
     |> do_noreply_translation(state, data)
   end
+  def handle_event(:enter, _pre, post, data = %{on_state_entry: on_state_entry, transition: transition}) do
+    transition
+    |> on_state_entry.(post, data.data)
+    |> do_defer_translation(:on_state_entry, transition, post, data)
+    |> do_on_state_entry_translation(data)
+  end
+
+  @impl true
+  @spec terminate(any, atom, data) :: any
+  def terminate(reason, state, %{module: module, data: data}) do
+    with s_modules when not is_nil(s_modules) <- module.__info__(:attributes)[:state_modules],
+         submodule when not is_nil(submodule) <- s_modules[state],
+         true <- function_exported?(submodule, :terminate, 2) do
+      submodule.terminate(reason, data)
+    else
+      _ ->
+        function_exported?(module, :terminate, 3) && module.terminate(reason, state, data)
+    end
+  end
 
   #############################################################################
   ## GenServer wrappers.
@@ -946,8 +967,19 @@ defmodule StateServer do
   @compile {:inline, call: 3, cast: 2, reply: 2, code_change: 4, format_status: 2}
 
   @spec call(server, any, timeout) :: term
-  @doc "should be identical to `GenServer.call/3`"
-  def call(server, request, timeout \\ 5000), do: :gen_statem.call(server, request, timeout)
+  @doc "
+  should be identical to `GenServer.call/3`
+
+  **NB**: this behavior is consistent with the GenServer call but NOT the
+  `:gen_statem.call/3`, which spawns a proxy process.  StateServer
+  chooses the GenServer call to maintain consistency across developer
+  expectations.  If you need `:gen_statem`-like behavior, you can manually
+  call `:gen_statem.call/3` passing the pid or reference and it should work
+  as expected.
+  "
+  def call(server, request, timeout \\ 5000) do
+    GenServer.call(server, request, timeout)
+  end
 
   @spec cast(server, any) :: :ok
   @doc "should be identical to `GenServer.cast/2`"
@@ -991,8 +1023,8 @@ defmodule StateServer do
   defp generate_selector(module) do
     @optional_callbacks
     |> Enum.flat_map(&(&1))  # note that optional callbacks is an accumulating attribute
-    |> Enum.reject(fn {fun, _} -> fun in @macro_callbacks end) #ignore is_ functions.
-    |> Enum.reduce(%{module: module, data: nil}, &add_callback(&2, module, &1))
+    |> Enum.reject(fn {fun, _} -> (fun in [:terminate | @macro_callbacks]) end) #ignore is_ functions.
+    |> Enum.reduce(%{@empty_init | module: module}, &add_callback(&2, module, &1))
   end
 
   ######################################################################
@@ -1063,7 +1095,7 @@ defmodule StateServer do
     module_name = Module.concat(__CALLER__.module, module_alias)
     code! = inject_behaviour(code)
     quote do
-      @__body_modules__ {unquote(state), unquote(module_name)}
+      @state_modules {unquote(state), unquote(module_name)}
       defmodule unquote(module_ast), unquote(code!)
     end
   end
@@ -1081,7 +1113,7 @@ defmodule StateServer do
     module_name = Macro.expand(module, __CALLER__)
     quote do
       require unquote(module_name)  # the module needs to be loaded to avoid strange compilation race conditions.
-      @__body_modules__ {unquote(state), unquote(module_name)}
+      @state_modules {unquote(state), unquote(module_name)}
     end
   end
 
@@ -1093,28 +1125,36 @@ defmodule StateServer do
   end
 
   defmacro __before_compile__(_) do
+    module = __CALLER__.module
 
-    state_graph = Module.get_attribute(__CALLER__.module, :state_graph)
-    body_modules = Module.get_attribute(__CALLER__.module, :__body_modules__)
+    state_graph = Module.get_attribute(module, :state_graph)
+    state_modules = Module.get_attribute(module, :state_modules)
 
-    Enum.each(Keyword.keys(body_modules), fn state ->
+    # verify that our body modules are okay.
+    Enum.each(Keyword.keys(state_modules), fn state ->
       unless Keyword.has_key?(state_graph, state) do
         raise ArgumentError, "you attempted to bind a module to nonexistent state #{state}"
+      end
+
+      behaviours = state_modules[state].__info__(:attributes)[:behaviour]
+
+      unless behaviours && (StateServer.State in behaviours)  do
+        raise CompileError, description: "the module #{state_modules[state]} doesn't implement the StateServer.State behaviour."
       end
     end)
 
     shims = @optional_callbacks
     |> Enum.flat_map(&(&1))
     |> Enum.reject(fn {fun, _} -> fun in @macro_callbacks end)
-    |> Enum.map(&make_shim(&1, body_modules))
+    |> Enum.map(&make_shim(&1, state_modules))
 
     quote do
-      unquote(shims)
+      unquote_splicing(shims)
     end
   end
 
-  defp make_shim({fun, arity}, body_modules) do
-    shim_parts = Enum.map(body_modules, fn {state, module} ->
+  defp make_shim({fun, arity}, state_modules) do
+    shim_parts = Enum.map(state_modules, fn {state, module} ->
       if function_exported?(module, fun, arity - 1) do
         make_function_for(module, fun, state)
       end
@@ -1133,18 +1173,21 @@ defmodule StateServer do
       end
     end
   end
+  # handle transition has an unusal parameter order.
   defp make_function_for(module, :handle_transition, state) do
     quote do
       @doc false
+
       def __handle_transition_shim__(unquote(state), transition, data) do
         unquote(module).handle_transition(transition, data)
       end
     end
   end
-  # works for handle_cast/3, handle_info/3, handle_internal/3, handle_continue/3, handle_timeout/3
+  # works for handle_cast/3, handle_info/3, handle_internal/3, handle_continue/3, handle_timeout/3,
+  # on_state_entry/3, and terminate/3
   defp make_function_for(module, fun, state)
        when fun in [:handle_cast, :handle_info, :handle_internal,
-                    :handle_continue, :handle_timeout, :on_state_entry] do
+                    :handle_continue, :handle_timeout, :on_state_entry, :terminate] do
     shim_fn_name = Macros.state_shim_for(fun)
     quote do
       @doc false
@@ -1180,5 +1223,10 @@ defmodule StateServer do
       def unquote(fun)(_, _, _), do: :defer
     end
   end
+
+  # a debugging tool
+  @doc false
+  @spec __introspect__(GenServer.server) :: map
+  def __introspect__(srv), do: call(srv, :"$introspect")
 
 end

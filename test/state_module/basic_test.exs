@@ -1,4 +1,7 @@
 defmodule ExternalStart do
+
+  @behaviour StateServer.State
+
   def handle_call(:get_data, _from, data) do
     {:reply, data}
   end

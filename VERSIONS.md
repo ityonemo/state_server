@@ -87,6 +87,10 @@
 - added support for the `terminate/3` callback
 - added support for `start/2` and `start/3` in addition to `start_link`
 
+## 0.4.7
+
+- repaired regression where self-transitions didn't trigger on_state_entry
+
 ### Unscheduled
 
 - `on_data_update/4` special callback

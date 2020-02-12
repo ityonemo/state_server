@@ -32,7 +32,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:state_server, "~> 0.4.6"}
+    {:state_server, "~> 0.4.7"}
   ]
 end
 ```

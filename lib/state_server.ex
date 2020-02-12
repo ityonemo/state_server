@@ -756,14 +756,21 @@ defmodule StateServer do
 
       # update events at the beginning of the queue are privileged and are triggered
       # before changisg state.
+
       {:noreply, [{:update, new_data} | other_actions]} ->
         {:next_state, next_state, %{data_tr | data: new_data}, do_event_conversion(actions ++ other_actions)}
 
       {:noreply, extra_actions} ->
         {:next_state, next_state, data_tr, do_event_conversion(actions ++ extra_actions)}
     end
+    |> do_collapse_next_state(state, next_state)
   end
-#
+
+  defp do_collapse_next_state({:next_state, _, new_data, events}, state, state) do
+    {:repeat_state, new_data, events}
+  end
+  defp do_collapse_next_state(any, _, _), do: any
+
   defp do_reply_translation(msg, from, state, data) do
     case msg do
       {:reply, reply} ->

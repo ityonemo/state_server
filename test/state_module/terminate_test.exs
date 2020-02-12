@@ -37,7 +37,6 @@ defmodule StateServerTest.StateModule.TerminateTest do
   end
 
   describe "instrumenting terminate" do
-    @describetag :one
     test "works outside a state module" do
       {:ok, srv} = Instrumented.start(self())
       StateServer.call(srv, :stop)

@@ -125,6 +125,24 @@ defmodule StateServer.State do
     in the first position, the update event will be reflected in the
     delegated state machine call.
 
+  #### ignore/1
+
+  inside of a `defstate` module you may use the `ignore/1` macro, which
+  used as follows:
+
+  ```
+  ignore :handle_cast
+  ```
+
+  and inserts the following stanza:
+
+  ```
+  def handle_cast(_, _), do: :noreply
+  ```
+
+  this works for `handle_cast`, `handle_info`, `handle_continue`,
+  `handle_internal`, `handle_transition`, `on_state_entry`, and `terminate`.
+
   ### Termination rules
 
   If a State module implements the `c:terminate/2` callback, then it will be

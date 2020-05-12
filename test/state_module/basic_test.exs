@@ -21,13 +21,24 @@ defmodule StateServerTest.StateModule.BasicTest do
 
     def get_data(srv), do: GenServer.call(srv, :get_data)
 
+    delegate handle_info
+
     defstate Start, for: :start do
+      # for ignore/1 testing
+      ignore :handle_info
     end
   end
 
   describe "when you use defstate/3" do
     test "it creates a submodule" do
       assert function_exported?(Basic.Start, :__info__, 1)
+    end
+
+    test "trapped, ignored functions don't crash the server" do
+      {:ok, pid} = Basic.start_link(:foo)
+      send(pid, :bar) # shouldn't crash.
+      Process.sleep(100)
+      assert Process.alive?(pid)
     end
   end
 

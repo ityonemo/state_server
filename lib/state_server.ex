@@ -1131,8 +1131,16 @@ defmodule StateServer do
   defp inject_behaviour([do: {:__block__, [], codelines}]) do
     [do: {:__block__, [], [quote do
       @behaviour StateServer.State
+      import StateServer.Macros, only: [ignore: 1]
     end | codelines]
     }]
+  end
+  defp inject_behaviour([do: one_line]) do
+    [do: quote do
+      @behaviour StateServer.State
+      import StateServer.Macros, only: [ignore: 1]
+      unquote(one_line)
+    end]
   end
 
   defmacro __before_compile__(_) do

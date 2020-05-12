@@ -150,6 +150,15 @@ defmodule StateServer.Macros do
     end
   end
 
+  @handlers [:handle_cast, :handle_continue, :handle_info, :handle_internal,
+    :handle_timeout, :handle_transition, :on_state_entry, :terminate]
+
+  defmacro ignore(handler) when handler in @handlers do
+    quote do
+      def unquote(handler)(_, _), do: :noreply
+    end
+  end
+
   @spec state_shim_for(atom) :: atom
   def state_shim_for(fun) do
     String.to_atom("__" <> Atom.to_string(fun) <> "_shim__")

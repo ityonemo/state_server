@@ -50,12 +50,12 @@ defmodule StateServer.State do
 
   Be sure to mark your `ExternalModule` as having the `StateServer.State` behaviour.
 
-  ### Precedence and Defer statements
+  ### Precedence and delegate statements
 
   Note that `handle_\*` functions written directly in the body of the
   `StateServer` take precedence over any functions written as a part of a state
   module.  In the case where there are competing function calls, your handler
-  functions written *in the body* of the `StateServer` may emit `:defer` as a
+  functions written *in the body* of the `StateServer` may emit `:delegate` as a
   result, which will punt the processing of the event to the state modules.
 
   ```elixir
@@ -65,14 +65,14 @@ defmodule StateServer.State do
   end
   # for all other call payloads, send to the state modules
   def handle_call(_, _, _, _) do
-    :defer
+    :delegate
   end
 
   defstate Start, for: :start do
     def handle_call(...) do...
   ```
 
-  since this is a common pattern, we provide a `defer` macro which is
+  since this is a common pattern, we provide a `delegate` macro which is
   equivalent to the above:
 
   ```elixir
@@ -81,7 +81,7 @@ defmodule StateServer.State do
     {:reply, {state, data}}
   end
   # for all other call payloads, send to the state modules
-  defer handle_call
+  delegate handle_call
   ```
 
   #### Important
@@ -89,23 +89,23 @@ defmodule StateServer.State do
   If you handle an event via **any** instance of a handler function block in
   the main `StateServer` module, and return a  `:reply` or `:noreply`, it
   will **not** be handled by the `State` module, you must explicitly
-  specify `:defer` to be handled by `State` modules.
+  specify `:delegate` to be handled by `State` modules.
 
   If there are **no** instances of the handler function, then handling will
-  default to the `State` modules without using the `defer` macro.
+  default to the `State` modules without using the `delegate` macro.
 
-  #### Defer with common events
+  #### delegate with common events
 
   If you would like to perform analysis on the inbound data, generating events
-  *and* defer to the individual states for further state-specific event
-  processing, you may do so with the `{:defer, events}` result type.  For
+  *and* delegate to the individual states for further state-specific event
+  processing, you may do so with the `{:delegate, events}` result type.  For
   example, the following code:
 
   ```elixir
   # perform some common processing
   def handle_call({:query, payload}, _from, _state, data) do
     common_events = generate_common_events_from(payload)
-    {:defer, common_events}
+    {:delegate, common_events}
   end
 
   defstate Start, for: :start do
@@ -122,8 +122,8 @@ defmodule StateServer.State do
 
   - If you have an `{:update, <new_data>}` in the first position, or in the
     second position with a `{:goto, <state>}`, or `{:transition, <state>}`
-    in the first position, the update event will be reflected in the deferred
-    state machine call.
+    in the first position, the update event will be reflected in the
+    delegated state machine call.
 
   ### Termination rules
 

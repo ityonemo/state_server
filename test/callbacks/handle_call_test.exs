@@ -72,7 +72,7 @@ defmodule StateServerTest.Callbacks.HandleCallTest do
       assert {:start, ^f} = Instrumented.state(srv)
     end
 
-    test "works when deferred" do
+    test "works when delegated" do
       {:ok, srv} = Instrumented.start_link(fn from ->
         Process.send_after(self(), {:do_classic_reply, from}, 0)
         :noreply
@@ -83,7 +83,7 @@ defmodule StateServerTest.Callbacks.HandleCallTest do
     end
   end
 
-  describe "instrumenting handle_call with deferred reply using Process.send_after" do
+  describe "instrumenting handle_call with delegated reply using Process.send_after" do
     test "works with static/idempotent" do
       {:ok, srv} = Instrumented.start_link(fn from ->
         Process.send_after(self(), {:do_reply, from}, 0)

@@ -45,17 +45,17 @@ defmodule StateServer.Macros do
     end
   end
 
-  defmacro do_defer_translation(prev, :handle_call, payload, from, state, data) do
-    generate_handle_call_defer_translation(prev, payload, from, state, data)
+  defmacro do_delegate_translation(prev, :handle_call, payload, from, state, data) do
+    generate_handle_call_delegate_translation(prev, payload, from, state, data)
   end
 
-  @spec generate_handle_call_defer_translation(Macro.t, Macro.t, Macro.t, Macro.t, Macro.t) :: Macro.t
-  def generate_handle_call_defer_translation(prev, payload, from, state, data) do
+  @spec generate_handle_call_delegate_translation(Macro.t, Macro.t, Macro.t, Macro.t, Macro.t) :: Macro.t
+  def generate_handle_call_delegate_translation(prev, payload, from, state, data) do
     default_handler_code = default_failure_code(:handle_call, 4)
     quote do
       unquote(prev)
       |> case do
-        :defer ->
+        de when de in [:defer, :delegate] ->
           if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
             unquote(data).module.__handle_call_shim__(unquote(payload),
                                                       unquote(from),
@@ -64,8 +64,8 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
-        {:defer, events = [{type, _}, {:update, new_data} | _]}
-            when type in [:goto, :transition] ->
+        {de, events = [{type, _}, {:update, new_data} | _]}
+            when type in [:goto, :transition] and de in [:defer, :delegate]->
           if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
             unquote(data).module.__handle_call_shim__(unquote(payload),
                                                       unquote(from),
@@ -75,7 +75,7 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
-        {:defer, events = [{:update, new_data} | _]} ->
+        {de, events = [{:update, new_data} | _]} when de in [:defer, :delegate]->
           if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
             unquote(data).module.__handle_call_shim__(unquote(payload),
                                                       unquote(from),
@@ -85,7 +85,7 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
-        {:defer, events} ->
+        {de, events} when de in [:defer, :delegate]->
           if function_exported?(unquote(data).module, :__handle_call_shim__, 4) do
             unquote(data).module.__handle_call_shim__(unquote(payload),
                                                       unquote(from),
@@ -100,25 +100,25 @@ defmodule StateServer.Macros do
     end
   end
 
-  defmacro do_defer_translation(prev, fun, payload, state, data) do
-    generate_defer_translation(prev, fun, payload, state, data)
+  defmacro do_delegate_translation(prev, fun, payload, state, data) do
+    generate_delegate_translation(prev, fun, payload, state, data)
   end
 
-  @spec generate_defer_translation(Macro.t, atom, Macro.t, Macro.t, Macro.t) :: Macro.t
-  def generate_defer_translation(prev, fun, payload, state, data) do
+  @spec generate_delegate_translation(Macro.t, atom, Macro.t, Macro.t, Macro.t) :: Macro.t
+  def generate_delegate_translation(prev, fun, payload, state, data) do
     default_handler_code = default_failure_code(fun, 3)
     shim_fn = state_shim_for(fun)
     quote do
       unquote(prev)
       |> case do
-        :defer ->
+        de when de in [:defer, :delegate] ->
           if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
             unquote(data).module.unquote(shim_fn)(unquote(payload), unquote(state), unquote(data).data)
           else
             unquote(default_handler_code)
           end
-        {:defer, events = [{type, _}, {:update, new_state} | _]}
-            when type in [:goto, :transition] ->
+        {de, events = [{type, _}, {:update, new_state} | _]}
+            when type in [:goto, :transition] and de in [:defer, :delegate] ->
           if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
             unquote(data).module.unquote(shim_fn)(
               unquote(payload),
@@ -128,7 +128,7 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
-        {:defer, events = [{:update, new_state} | _]} ->
+        {de, events = [{:update, new_state} | _]} when de in [:defer, :delegate]  ->
           if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
             unquote(data).module.unquote(shim_fn)(
               unquote(payload),
@@ -138,7 +138,7 @@ defmodule StateServer.Macros do
           else
             unquote(default_handler_code)
           end
-        {:defer, events} ->
+        {de, events} when de in [:defer, :delegate] ->
           if function_exported?(unquote(data).module, unquote(shim_fn), 3) do
             unquote(data).module.unquote(shim_fn)(unquote(payload), unquote(state), unquote(data).data)
             |> StateServer.Macros.prepend_events(events)

@@ -25,8 +25,8 @@ defmodule SwitchWithStates do
   def handle_call(:flip, _from, _state, _count) do
     {:reply, :ok, transition: :flip}
   end
-  defer handle_call
-  # we must defer the handle_call statement because there are both shared and
+  delegate handle_call
+  # we must delegate the handle_call statement because there are both shared and
   # individual implementation of handle_call features.
 
   defstate Off, for: :off do

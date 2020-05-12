@@ -1,5 +1,5 @@
 
-defmodule StateServerTest.StateModule.DeferUpdateTest do
+defmodule StateServerTest.StateModule.DelegateUpdateTest do
 
   use ExUnit.Case, async: true
 
@@ -37,18 +37,18 @@ defmodule StateServerTest.StateModule.DeferUpdateTest do
     end
   end
 
-  describe "when you defer with an update" do
+  describe "when you delegate with an update" do
     test "in the first position with call, it shows up in the data" do
       {:ok, srv} = Instrumentable.start_link(:foo)
       assert :foo == Instrumentable.data(srv)
-      assert :bar == Instrumentable.run_call(srv, {:defer, update: :bar})
+      assert :bar == Instrumentable.run_call(srv, {:delegate, update: :bar})
       assert :bar == Instrumentable.data(srv)
     end
 
     test "in the first position with cast, it shows up in the data" do
       {:ok, srv} = Instrumentable.start_link(:foo)
       assert :foo == Instrumentable.data(srv)
-      Instrumentable.run_cast(srv, {:defer, update: :bar})
+      Instrumentable.run_cast(srv, {:delegate, update: :bar})
       assert_receive :bar
       assert :bar == Instrumentable.data(srv)
     end
@@ -56,14 +56,14 @@ defmodule StateServerTest.StateModule.DeferUpdateTest do
     test "in the first position with call/goto, it shows up in the data" do
       {:ok, srv} = Instrumentable.start_link(:foo)
       assert :foo == Instrumentable.data(srv)
-      assert :bar == Instrumentable.run_call(srv, {:defer, goto: :start, update: :bar})
+      assert :bar == Instrumentable.run_call(srv, {:delegate, goto: :start, update: :bar})
       assert :bar == Instrumentable.data(srv)
     end
 
     test "in the first position with cast/goto, it shows up in the data" do
       {:ok, srv} = Instrumentable.start_link(:foo)
       assert :foo == Instrumentable.data(srv)
-      Instrumentable.run_cast(srv, {:defer, goto: :start, update: :bar})
+      Instrumentable.run_cast(srv, {:delegate, goto: :start, update: :bar})
       assert_receive :bar
       assert :bar == Instrumentable.data(srv)
     end
@@ -71,14 +71,14 @@ defmodule StateServerTest.StateModule.DeferUpdateTest do
     test "in the first position with call/transition, it shows up in the data" do
       {:ok, srv} = Instrumentable.start_link(:foo)
       assert :foo == Instrumentable.data(srv)
-      assert :bar == Instrumentable.run_call(srv, {:defer, transition: :tr, update: :bar})
+      assert :bar == Instrumentable.run_call(srv, {:delegate, transition: :tr, update: :bar})
       assert :bar == Instrumentable.data(srv)
     end
 
     test "in the first position with cast/transition, it shows up in the data" do
       {:ok, srv} = Instrumentable.start_link(:foo)
       assert :foo == Instrumentable.data(srv)
-      Instrumentable.run_cast(srv, {:defer, transition: :tr, update: :bar})
+      Instrumentable.run_cast(srv, {:delegate, transition: :tr, update: :bar})
       assert_receive :bar
       assert :bar == Instrumentable.data(srv)
     end

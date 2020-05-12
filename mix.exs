@@ -4,7 +4,7 @@ defmodule StateServer.MixProject do
   def project do
     [
       app: :state_server,
-      version: "0.4.7",
+      version: "0.4.9",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

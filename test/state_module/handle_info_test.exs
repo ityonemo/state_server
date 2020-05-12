@@ -2,7 +2,7 @@ defmodule StateServerTest.StateModule.HandleInfoTest do
 
   use ExUnit.Case, async: true
 
-  defmodule Undeferred do
+  defmodule Undelegated do
     use StateServer, [start: [tr: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -21,7 +21,7 @@ defmodule StateServerTest.StateModule.HandleInfoTest do
     end
   end
 
-  defmodule Deferred do
+  defmodule Delegated do
     use StateServer, [start: [tr: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -31,7 +31,7 @@ defmodule StateServerTest.StateModule.HandleInfoTest do
 
     def send_cast(srv), do: GenServer.cast(srv, {:send_cast, self()})
 
-    defer handle_info
+    delegate :handle_info
 
     defstate Start, for: :start do
       @impl true
@@ -44,14 +44,14 @@ defmodule StateServerTest.StateModule.HandleInfoTest do
 
   describe "when you implement a state with a handle_info function" do
     test "it gets called by the outside module" do
-      {:ok, pid} = Undeferred.start_link("foo")
+      {:ok, pid} = Undelegated.start_link("foo")
 
       send(pid, {:respond, self()})
       assert_receive {:response, "foo"}
     end
 
-    test "it can get called when deferred" do
-      {:ok, pid} = Deferred.start_link("foo")
+    test "it can get called when delegated" do
+      {:ok, pid} = Delegated.start_link("foo")
 
       send(pid, {:respond, self()})
       assert_receive {:response, "foo"}

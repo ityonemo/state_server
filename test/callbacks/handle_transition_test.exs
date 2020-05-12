@@ -43,8 +43,8 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
 
     @impl true
     def handle_internal({:delay, who}, _state, _data) do
-      send(who, :deferral)
-      receive do :deferred -> :noreply end
+      send(who, :delegation)
+      receive do :delegated -> :noreply end
     end
   end
 
@@ -108,7 +108,7 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
     assert_receive {:reply, :start, :tr}
   end
 
-  test "a deferred transition event triggers the transition" do
+  test "a delegated transition event triggers the transition" do
     test_pid = self()
 
     {:ok, srv} = Instrumented.start_link(fn state, tr ->
@@ -119,7 +119,7 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
     assert {:start, _f} = Instrumented.state(srv)
 
     StateServer.cast(srv, {:delay, test_pid})
-    receive do :deferral -> send(srv, :deferred) end
+    receive do :delegation -> send(srv, :delegated) end
 
     assert_receive {:reply, :start, :tr}
   end
@@ -152,7 +152,7 @@ defmodule StateServerTest.Callbacks.HandleTransitionTest do
     assert {:start, f} = Instrumented.state(srv)
 
     StateServer.cast(srv, {:delay, test_pid})
-    receive do :deferral -> send(srv, :deferred) end
+    receive do :delegation -> send(srv, :delegated) end
 
     assert_receive {:reply, :start, :tr}
 

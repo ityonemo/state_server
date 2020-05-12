@@ -30,10 +30,10 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
     def on_state_entry(:tr_double, :end, pid) do
       # allows for a double-hit
       send(pid, :first_hit)
-      :defer
+      :delegate
     end
     def on_state_entry(_, :start, _), do: :noreply
-    defer on_state_entry
+    delegate :on_state_entry
 
     defstate End, for: :end do
       @impl true
@@ -86,7 +86,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
     end
   end
 
-  defmodule StateEntryDeferral do
+  defmodule StateEntryDelegation do
     use StateServer, [start: [tr: :end, tr2: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -103,7 +103,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       :noreply
     end
     def on_state_entry(_, :start, _), do: :noreply
-    defer on_state_entry
+    delegate :on_state_entry
 
     defstate End, for: :end do
       @impl true
@@ -115,21 +115,21 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
 
   end
 
-  describe "when you implement a state with a on_state_entry function and defer" do
-    test "it gets called correctly after deferral" do
-      {:ok, pid} = StateEntryDeferral.start_link(self())
+  describe "when you implement a state with a on_state_entry function and delegate" do
+    test "it gets called correctly after delegation" do
+      {:ok, pid} = StateEntryDelegation.start_link(self())
       GenServer.call(pid, transition: :tr)
       assert_receive {:entry_via, :tr}
     end
 
-    test "it gets called correctly before deferral" do
-      {:ok, pid} = StateEntryDeferral.start_link(self())
+    test "it gets called correctly before delegation" do
+      {:ok, pid} = StateEntryDelegation.start_link(self())
       GenServer.call(pid, transition: :tr2)
       assert_receive :outer_handler
     end
 
     test "it gets called correctly on goto" do
-      {:ok, pid} = StateEntryDeferral.start_link(self())
+      {:ok, pid} = StateEntryDelegation.start_link(self())
       GenServer.call(pid, goto: :end)
       assert_receive {:entry_via, nil}
     end

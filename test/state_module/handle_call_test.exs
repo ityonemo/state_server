@@ -2,7 +2,7 @@ defmodule StateServerTest.StateModule.HandleCallTest do
 
   use ExUnit.Case, async: true
 
-  defmodule Undeferred do
+  defmodule Undelegated do
     use StateServer, [start: [tr: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -20,7 +20,7 @@ defmodule StateServerTest.StateModule.HandleCallTest do
     end
   end
 
-  defmodule Deferred do
+  defmodule Delegated do
     use StateServer, [start: [tr: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -30,7 +30,7 @@ defmodule StateServerTest.StateModule.HandleCallTest do
 
     def get_data(srv), do: GenServer.call(srv, :get_data)
 
-    defer handle_call
+    delegate :handle_call
 
     defstate Start, for: :start do
       @impl true
@@ -42,15 +42,15 @@ defmodule StateServerTest.StateModule.HandleCallTest do
 
   describe "when you implement a state with a handle_call function" do
     test "it gets called by the outside module" do
-      {:ok, pid} = Undeferred.start_link("foo")
+      {:ok, pid} = Undelegated.start_link("foo")
 
-      assert "foo" == Undeferred.get_data(pid)
+      assert "foo" == Undelegated.get_data(pid)
     end
 
-    test "it can get called when deferred" do
-      {:ok, pid} = Deferred.start_link("foo")
+    test "it can get called when delegated" do
+      {:ok, pid} = Delegated.start_link("foo")
 
-      assert "foo" == Deferred.get_data(pid)
+      assert "foo" == Delegated.get_data(pid)
     end
   end
 end

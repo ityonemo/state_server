@@ -2,7 +2,7 @@ defmodule StateServerTest.StateModule.HandleInternalTest do
 
   use ExUnit.Case, async: true
 
-  defmodule Undeferred do
+  defmodule Undelegated do
     use StateServer, [start: [tr: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -19,7 +19,7 @@ defmodule StateServerTest.StateModule.HandleInternalTest do
     end
   end
 
-  defmodule Deferred do
+  defmodule Delegated do
     use StateServer, [start: [tr: :end], end: []]
 
     def start_link(data), do: StateServer.start_link(__MODULE__, data)
@@ -27,7 +27,7 @@ defmodule StateServerTest.StateModule.HandleInternalTest do
     @impl true
     def init(data), do: {:ok, data, internal: :internal_msg}
 
-    defer handle_internal
+    delegate :handle_internal
 
     defstate Start, for: :start do
       @impl true
@@ -40,12 +40,12 @@ defmodule StateServerTest.StateModule.HandleInternalTest do
 
   describe "when you implement a state with a handle_internal function" do
     test "it gets called by the outside module" do
-      Undeferred.start_link(self())
+      Undelegated.start_link(self())
       assert_receive {:response, "foo"}
     end
 
-    test "it can gets called when deferred" do
-      Deferred.start_link(self())
+    test "it can gets called when delegated" do
+      Delegated.start_link(self())
       assert_receive {:response, "foo"}
     end
   end

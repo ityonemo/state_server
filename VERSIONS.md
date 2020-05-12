@@ -91,6 +91,16 @@
 
 - repaired regression where self-transitions didn't trigger on_state_entry
 
+## 0.4.9
+
+- last version before 0.5.0
+- deprecate "defer" command in favor of "delegate" (will be removed in 0.5.0)
+- add "ignore" macro
+
+## 0.5.0 (future)
+
+- adds a tracer that can output all state machine events.
+
 ### Unscheduled
 
 - `on_data_update/4` special callback

@@ -27,7 +27,7 @@ defmodule StateServerTest.StateModule.HandleContinueTest do
     @impl true
     def init(data), do: {:ok, data, continue: :my_continuation}
 
-    delegate handle_continue
+    delegate :handle_continue
 
     defstate Start, for: :start do
       @impl true

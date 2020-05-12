@@ -30,7 +30,7 @@ defmodule StateServerTest.StateModule.HandleCallTest do
 
     def get_data(srv), do: GenServer.call(srv, :get_data)
 
-    delegate handle_call
+    delegate :handle_call
 
     defstate Start, for: :start do
       @impl true

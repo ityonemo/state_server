@@ -31,7 +31,7 @@ defmodule StateServerTest.StateModule.HandleCastTest do
 
     def send_cast(srv), do: GenServer.cast(srv, {:send_cast, self()})
 
-    delegate handle_cast
+    delegate :handle_cast
 
     defstate Start, for: :start do
       @impl true

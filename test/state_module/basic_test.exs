@@ -21,7 +21,7 @@ defmodule StateServerTest.StateModule.BasicTest do
 
     def get_data(srv), do: GenServer.call(srv, :get_data)
 
-    delegate handle_info
+    delegate :handle_info
 
     defstate Start, for: :start do
       # for ignore/1 testing

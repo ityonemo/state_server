@@ -81,7 +81,7 @@ defmodule StateServer.State do
     {:reply, {state, data}}
   end
   # for all other call payloads, send to the state modules
-  delegate handle_call
+  delegate :handle_call
   ```
 
   #### Important

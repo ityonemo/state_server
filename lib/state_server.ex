@@ -1221,7 +1221,7 @@ defmodule StateServer do
   handled by individual state modules.
 
   ```elixir
-  delegate handle_call
+  delegate :handle_call
   ```
 
   is equivalent to
@@ -1230,12 +1230,12 @@ defmodule StateServer do
   def handle_call(_, _, _, _), do: :delegate
   ```
   """
-  defmacro delegate({:handle_call, _, _}) do
+  defmacro delegate(:handle_call) do
     quote do
       def handle_call(_, _, _, _), do: :delegate
     end
   end
-  defmacro delegate({fun, _, _}) when fun in
+  defmacro delegate(fun) when fun in
       [:handle_cast, :handle_info, :handle_internal, :handle_continue,
        :handle_timeout, :handle_transition, :on_state_entry] do
     quote do

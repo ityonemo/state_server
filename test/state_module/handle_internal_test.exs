@@ -27,7 +27,7 @@ defmodule StateServerTest.StateModule.HandleInternalTest do
     @impl true
     def init(data), do: {:ok, data, internal: :internal_msg}
 
-    delegate handle_internal
+    delegate :handle_internal
 
     defstate Start, for: :start do
       @impl true

@@ -33,7 +33,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       :delegate
     end
     def on_state_entry(_, :start, _), do: :noreply
-    delegate on_state_entry
+    delegate :on_state_entry
 
     defstate End, for: :end do
       @impl true
@@ -103,7 +103,7 @@ defmodule StateServerTest.StateModule.OnStateEntryTest do
       :noreply
     end
     def on_state_entry(_, :start, _), do: :noreply
-    delegate on_state_entry
+    delegate :on_state_entry
 
     defstate End, for: :end do
       @impl true

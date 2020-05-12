@@ -32,7 +32,7 @@ defmodule StateServerTest.StateModule.HandleTransitionTest do
     @impl true
     def init(data), do: {:ok, data, timeout: {:internal_timeout, 200}}
 
-    delegate handle_transition
+    delegate :handle_transition
 
     defstate Start, for: :start do
       @impl true

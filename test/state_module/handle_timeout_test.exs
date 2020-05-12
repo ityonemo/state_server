@@ -27,7 +27,7 @@ defmodule StateServerTest.StateModule.HandleTimeoutTest do
     @impl true
     def init(data), do: {:ok, data, timeout: {:internal_timeout, 200}}
 
-    delegate handle_timeout
+    delegate :handle_timeout
 
     defstate Start, for: :start do
       @impl true

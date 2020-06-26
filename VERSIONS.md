@@ -97,6 +97,10 @@
 - deprecate "defer" command in favor of "delegate" (will be removed in 0.5.0)
 - add "ignore" macro
 
+## 0.4.10
+
+- add in support for `Multiverses` style testing
+
 ## 0.5.0 (future)
 
 - adds a tracer that can output all state machine events.

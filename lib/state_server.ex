@@ -590,55 +590,55 @@ defmodule StateServer do
   @typedoc false
   @type start_option :: :gen_statem.options | {:name, atom}
 
-  # generalized starting process, that works for both start/2,3 and start_link/2,3
-  defmacrop starter(start_fn) do
-    states_mod = __MODULE__
-    quote do
-      # de-hygeinize parameters from the function
-      {module, initializer, options} = {var!(module), var!(initializer), var!(options)}
-      # populate a struct that generates lambdas for each of the overridden
-      # callbacks.
-
-      state = %{generate_selector(module) | data: initializer}
-
-      case Keyword.pop(options, :name) do
-        {nil, options} ->
-          :gen_statem.unquote(start_fn)(unquote(states_mod), state, options)
-
-        {atom, options} when is_atom(atom) ->
-          :gen_statem.unquote(start_fn)({:local, atom}, unquote(states_mod),
-            state, Keyword.delete(options, :name))
-
-        {global = {:global, _term}, options} ->
-          :gen_statem.unquote(start_fn)(global, unquote(states_mod),
-          state, Keyword.delete(options, :name))
-
-        {via = {:via, via_module, _term}, options} when is_atom(via_module) ->
-          :gen_statem.unquote(start_fn)(via, unquote(states_mod),
-          state, Keyword.delete(options, :name))
-
-        {other, _} ->
-          raise ArgumentError, """
-          expected :name option to be one of the following:
-            * nil
-            * atom
-            * {:global, term}
-            * {:via, module, term}
-          Got: #{inspect(other)}
-          """
-      end
-    end
-  end
-
-
   @spec start(module, term, [start_option]) :: :gen_statem.start_ret
   def start(module, initializer, options \\ []) do
-    starter(:start)
+    do_start(:nolink, module, initializer, options)
   end
 
   @spec start_link(module, term, [start_option]) :: :gen_statem.start_ret
   def start_link(module, initializer, options \\ []) do
-    starter(:start_link)
+    do_start(:link, module, initializer, options)
+  end
+
+  defp do_start(link, module, initializer, options) do
+    init_arg = %{generate_selector(module) | data: initializer}
+
+    callers = if options[:forward_callers] do
+      [callers: [self() | Process.get(:"$callers", [])]]
+    else
+      []
+    end
+
+    case Keyword.pop(options, :name) do
+      {nil, opts} ->
+        :gen.start(__MODULE__, link, __MODULE__, init_arg, opts ++ callers)
+
+      {atom, opts} when is_atom(atom) ->
+        :gen.start(__MODULE__, link, {:local, atom}, __MODULE__, init_arg, opts ++ callers)
+
+      {{:global, _term} = tuple, opts} ->
+        :gen.start(__MODULE__, link, tuple, __MODULE__, init_arg, opts ++ callers)
+
+      {{:via, via_module, _term} = tuple, opts} when is_atom(via_module) ->
+        :gen.start(__MODULE__, link, tuple, __MODULE__, init_arg, opts ++ callers)
+
+      {other, _} ->
+        raise ArgumentError, """
+        expected :name option to be one of the following:
+          * nil
+          * atom
+          * {:global, term}
+          * {:via, module, term}
+        Got: #{inspect(other)}
+        """
+    end
+  end
+
+  def init_it(starter, self_param, name, __MODULE__, args, options!) do
+    callers = options![:callers]
+    if callers, do: Process.put(:"$callers", callers)
+    options! = Keyword.drop(options!, [:name, :callers, :forward_callers])
+    :gen_statem.init_it(starter, self_param, name, __MODULE__, args, options!)
   end
 
   @typep init_result :: :gen_statem.init_result(atom)

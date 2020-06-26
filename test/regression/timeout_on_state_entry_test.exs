@@ -4,8 +4,6 @@ defmodule StateServerTest.Regression.TimeoutOnStateEntryTest do
 
   use ExUnit.Case, async: true
 
-  @moduletag :one
-
   defmodule TestServer do
     use StateServer, [start: [],
                       end: [tr: :end]]

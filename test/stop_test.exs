@@ -39,9 +39,11 @@ defmodule StateServerTest.StopTest do
     def terminate(_, _, {:change, resp_pid}) do
       send(resp_pid, :changed)
     end
+    def terminate(_, _, _), do: :ok
   end
 
   describe "for handle_call" do
+    @tag :one
     test "the two-term reply works" do
       {:ok, srv} = Server.start(self())
       :ok = StateServer.call(srv, :stop2)

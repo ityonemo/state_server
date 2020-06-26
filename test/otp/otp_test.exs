@@ -59,10 +59,11 @@ defmodule StateServerTest.OtpTest do
       assert :foo == TestServer.get_state(TestServer)
     end
 
+    @tag :one
     test "with overriding child_spec" do
       Supervisor.start_link([{TestServerOverridden, name: TestServer}], strategy: :one_for_one)
 
-      Process.sleep(20)
+      Process.sleep(10)
 
       assert :foo == TestServerOverridden.get_state(TestServer)
 

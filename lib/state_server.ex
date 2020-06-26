@@ -591,11 +591,19 @@ defmodule StateServer do
   @type start_option :: :gen_statem.options | {:name, atom}
 
   @spec start(module, term, [start_option]) :: :gen_statem.start_ret
+  @doc "like `start_link/3`, but without process linking"
   def start(module, initializer, options \\ []) do
     do_start(:nolink, module, initializer, options)
   end
 
   @spec start_link(module, term, [start_option]) :: :gen_statem.start_ret
+  @doc """
+  like `GenServer.start_link/3`, but starts StateServer instead.
+
+  ## options
+  - `:forward_callers` when `true`, causes the StateServer to adopt the `:"$callers"` chain
+    of the process which executed `start_link/3`.
+  """
   def start_link(module, initializer, options \\ []) do
     do_start(:link, module, initializer, options)
   end

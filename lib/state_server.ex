@@ -83,7 +83,7 @@ defmodule StateServer do
     reply within the call's expected timeout, the calling process will crash.
 
   - `c:handle_cast/3` responds to a message sent via `GenServer.cast/2`.
-    Like `c:GenServer.handl_cast/2`, the calling process will immediately return
+    Like `c:GenServer.handle_cast/2`, the calling process will immediately return
     and this is effectively a `fire and forget` operation with no backpressure
     response.
 
@@ -114,7 +114,7 @@ defmodule StateServer do
 
   - `c:handle_transition/3` is triggered whenever you change states using the
     `{:transition, transition}` event.  Note that it's **not** triggered by a
-    `{:goto, state}` event.  You may find the `c:is_edge/3` callback guard to
+    `{:goto, state}` event.  You may find the `c:is_transition/3` callback guard to
     be useful for discriminating which transitions you care about.
 
   ### Special callbacks
@@ -281,7 +281,7 @@ defmodule StateServer do
   initialize the state to something else, use the `{:ok, data, goto: state}`
   response.
 
-  You may also respond with the usual `GenServer.init/1` responses, such as:
+  You may also respond with the usual `c:GenServer.init/1` responses, such as:
 
   - `:ignore`
   - `{:stop, reason}`
@@ -405,7 +405,6 @@ defmodule StateServer do
     {:state_timeout, {term, non_neg_integer}} | {:state_timeout, non_neg_integer} |
     {:timeout, {term, non_neg_integer}} | {:timeout, non_neg_integer}
 
-  @typedoc false
   @type on_state_entry_response ::
     :noreply | {:noreply, [on_state_entry_event]}
 
@@ -1064,7 +1063,7 @@ defmodule StateServer do
         {_, name} -> name
       end
 
-    pattern = '~p ~p received unexpected message in handle_info/3: ~p~n'
+    pattern = ~c"~p ~p received unexpected message in handle_info/3: ~p~n"
     :error_logger.error_msg(pattern, [__MODULE__, proc, msg])
 
     :noreply
